@@ -1,0 +1,8 @@
+prefix=/home/dell/ROS/MPC/install
+
+Name: mpc_view
+Description: Description of mpc_view
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

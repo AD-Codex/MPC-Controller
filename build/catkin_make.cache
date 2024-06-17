@@ -1,0 +1,2 @@
+mpc_view
+-DCATKIN_DEVEL_PREFIX=/home/dell/ROS/MPC/devel -DCMAKE_INSTALL_PREFIX=/home/dell/ROS/MPC/install -G Unix Makefiles
