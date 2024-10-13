@@ -8,16 +8,28 @@ import math
 from scipy.optimize import minimize, rosen, rosen_der
 
 
-# method='Nelder-Mead'
-# control_matrix = [0,0, 1,0, 1,0, 1,0, 1,0, 1,0, 1,0, 1,0, 1,0]
-# follow_path = np.array([ [0, -5, 0], [2, -4.8, 0], [4, -4.6, 0], [6, -4.4, 0], [8, -4.2, 0], [10, -4, 0], [12, -3.8, 0], [14, -3.6, 0], [16, -3.4, 0], [18, -3.2, 0], [20, -3, 0]])
-# weight = np.array([ 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5])
+# 1. method='trust-constr' -------------------------------------------------------
+a = 0.2
+# control_matrix = [a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0]
+# follow_path = np.array([ [0, 5, 0], [0.5, 5, 0], [1, 5, 0], [1.5, 5, 0], [2, 5, 0], [2.5, 5, 0], [3, 5, 0], [3.5, 5, 0], [4, 5, 0], [4.5, 5, 0], [5, 5, 0]])
+# weight = np.array([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+
+# object_location = np.array([ 3, 5, 0])
+# oblect_radius = 2
+# weight_constrain = np.array([ 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5])
+# factor = 0.6
 
 
-control_matrix = [0,0, 1,0, 1,0, 1,0, 1,0, 1,0, 1,0, 1,0, 1,0]
-follow_path = np.array([ [0, -5, -0.1], [2, -4.8, -0.2], [4, -4.5, -0.3], [6, -4, -0.4], [8, -3.5, 0], [10, -3.5, 0], [12, -3.5, 0], [14, -3.6, 0], [16, -3.4, 0], [18, -3.2, 0], [20, -3, 0]])
-# weight = np.array([ 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5])
-weight = np.array([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+a = 0.2
+control_matrix = [a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0, a,0]
+follow_path = np.array([ [0, 5, 0], [0.5, 5, 0], [1, 5, 0], [1.5, 5, 0], [2, 5, 0], [2.5, 5, 0], [3, 5, 0], [3.5, 5, 0], [4, 5, 0], [4.5, 5, 0], [5, 5, 0], [5.5, 5, 0], [6, 5, 0], [6.5, 5, 0], [7, 5, 0], [7.5, 5, 0], [8, 5, 0], [8.5, 5, 0], [9, 5, 0], [9.5, 5, 0], [10, 5, 0]])
+weight = np.array([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
+
+object_location = np.array([ 3, 5, 0])
+oblect_radius = 2
+weight_constrain = np.array([ 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5])
+factor = 0.6
+
 prediacted_states = []
 
 def cost_Fn( matrix):
@@ -29,7 +41,7 @@ def cost_Fn( matrix):
     for i in range( 0, len(matrix), 2):
         control_matrix.append( [ matrix[i], matrix[i+1]])
 
-    curr_state = [0,0,0]
+    curr_state = [0,5,0]
     prediacted_states = np.array([ curr_state ])
     dt = 1
 
@@ -48,17 +60,46 @@ def cost_Fn( matrix):
 
         curr_state = predict_state
 
+    # cost fn with constrain
+    print("constrain error")
+    J_constrain = 0
+    L = 2 # least distance
+    for count, predict_state in enumerate(prediacted_states):
+        distance_x = predict_state[0] - object_location[0]
+        distance_y = predict_state[1] - object_location[1]
+        orientation = predict_state[2]
+        angle = math.atan(distance_y/distance_x)
+        distanse = math.sqrt(distance_x**2 + distance_y**2)
+
+        theta = angle + orientation
+        error = abs(distanse * math.sin(theta)) - (L + oblect_radius)
+        if distance_x < 0 and distanse > 3 and theta > 1 :
+            print("no error", end=" ")
+            J_constrain = J_constrain
+        elif distance_x < 1 :
+            print(error, end=" ")
+            J_constrain = J_constrain + weight_constrain[count] * (error**2)
+        else:
+            print("no error", end=" ")
+            J_constrain = J_constrain
+
+    
+    # cost fn with line follow
+    print("\nline error")
     J = np.array([0,0,0])
-    for count, predict_state in enumerate(prediacted_states) :
-        J = J + weight[count] * ( predict_state -  follow_path[count]) ** 2
+    for count, predict_state in enumerate(prediacted_states):
+        error = predict_state -  follow_path[count]
+        print(error, end=" ")
+        J = J + weight[count] * (error**2)
 
-    print(prediacted_states)
-    print("error" , J)
+    # print(prediacted_states)
+    Terror = factor*(J[0] + J[1] + J[2]) + (1-factor)*J_constrain
+    print("\nerror" , Terror)
 
-    return J[0]**2 + J[1]**2 + J[2]**2
+    return  Terror
 
 
-res = minimize(cost_Fn, control_matrix, method='Nelder-Mead', tol=1e-6)
+res = minimize(cost_Fn, control_matrix, method='trust-constr', tol=1e-6)
 
 
 
@@ -74,7 +115,7 @@ if __name__ == '__main__':
 
     rate = rospy.Rate(20)
 
-    i= 0
+    i = 0
 
     while not rospy.is_shutdown():
 
@@ -90,15 +131,15 @@ if __name__ == '__main__':
             marker.action = Marker.ADD
 
             # Scale
-            marker.scale.x = 1
-            marker.scale.y = 0.1
-            marker.scale.z = 0.1
+            marker.scale.x = 0.2
+            marker.scale.y = 0.05
+            marker.scale.z = 0.05
 
             # Color
             marker.color.r = 1.0
             marker.color.g = 0.0
             marker.color.b = 0.0
-            marker.color.a = 1.0
+            marker.color.a = 0.5
 
             # Pose
             marker.pose.position.x = follow_path[i][0]
@@ -133,15 +174,15 @@ if __name__ == '__main__':
             marker.action = Marker.ADD
 
             # Scale
-            marker.scale.x = 1
-            marker.scale.y = 0.1
-            marker.scale.z = 0.1
+            marker.scale.x = 0.2
+            marker.scale.y = 0.05
+            marker.scale.z = 0.05
 
             # Color
             marker.color.r = 0.0
             marker.color.g = 1.0
             marker.color.b = 0.0
-            marker.color.a = 1.0
+            marker.color.a = 0.5
 
             # Pose
             marker.pose.position.x = prediacted_states[i][0]
@@ -161,6 +202,34 @@ if __name__ == '__main__':
 
             markerArray.markers.append(marker)
 
+        
+        marker = Marker()
+        marker.header.frame_id = "base_link"
+        marker.header.stamp = rospy.Time.now()
+        marker.ns = ""
+
+            # Shape (mesh resource type - 10)
+        marker.type = Marker.CYLINDER
+        marker.id = 1000
+        marker.action = Marker.ADD
+
+            # Scale
+        marker.scale.x = 1
+        marker.scale.y = 1
+        marker.scale.z = 1
+
+            # Color
+        marker.color.r = 0.0
+        marker.color.g = 0.0
+        marker.color.b = 1.0
+        marker.color.a = 0.5
+
+            # Pose
+        marker.pose.position.x = object_location[0]
+        marker.pose.position.y = object_location[1]
+        marker.pose.position.z = 0.5
+
+        markerArray.markers.append(marker)
 
         marker_pub.publish(markerArray)
 
