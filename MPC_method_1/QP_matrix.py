@@ -13,33 +13,75 @@
 # y_k+1 = y_k  +  v_k.sin(theta_k).dt  +  v_k.cos(theta_k).dt.theta_k
 # theta_k+1 = theta_k + w_k.dt
 
+# | X_k+1     |   | 1  0  -v_k.sin(theta_k).dt | | X_k     |     | cos(theta_k).dt   0 |
+# | Y_k+1     | = | 0  1   v_k.cos(theta_k).dt |.| Y_k     |  +  | sin(theta_k).dt   0 |
+# | theta_k+1 |   | 0  0                     1 | | theta_k |     |               0  dt |
 
+# X_predict = phi . x_0 + tau .U_predict  -------- STATE MATRIX
+
+# X_predict = [ x_1, y_1, theta_1, x_2, y_2, theta_2, x_3, y_3, theta_3, x_4, y_4, theta_4] ^ T
+
+# phi = [          A0]
+#       [       A1.A0]
+#       [    A2.A1.A0]
+#       [ A3.A2.A1.A0]
+
+# tau = [          B0,         0,       0,      0]
+#       [       A1.B0,        B1,       0,      0]    
+#       [    A2.A1.B0,     A2.B1,      B2,      0]  
+#       [ A3.A2.A1.B0,  A3.A2.B1,   A3.B2,     B3]
+
+# U_predict = [ v0, w0, v1, w1, v2, w2, v3, w3, v4, w4] ^ T
+
+# Cost Fn
+# J = (X_predict - X_ref)^T . Q . (X_predict - X_ref) + U_predict^T . R . U_predict
+#   = (1/2) . U_predict^T . H . U_predict + f^T . U_predict + constant
+
+# H = tau^T . Q . tau + R
+# f = tau^T . Q . ( phi . x_0 - X_ref)
+
+
+import daqp
+from ctypes import * 
+import ctypes.util
 import numpy as np
 import math
 
 
-init_state_val = np.array([ [1], [1], [0]])
-init_control_val = np.array([ [1], [1]])
 
-ref_state_val = np.array([[0, 0.1, 0.2, 0.3, 0.4, 0.5], 
-                          [0, 0.1, 0.2, 0.3, 0.4, 0.5], 
-                          [0,   0,   0,   0,   0,   0]])
+# X_0 = np.array([ [1], [2], [0]])
+# dt = 0.1
 
-pred_state_val = np.zeros(3,6)
+# # reference state values [[ x],[ y],[ z]]
+# ref_state_val = np.array([[0, 1, 1.1, 1.2], 
+#                           [0, 0, 0, 0], 
+#                           [0, 0, 0, 0]])
 
 
-def A_k( state_val, control_val, dt) :
+# # U_predict [ [v], [w]]
+# pred_control_val = np.array([[   1,   1,   1],
+#                              [   0,   0,   0]])
+
+# control_val_R = np.zeros( len(pred_control_val[0])*2)
+# state_val_Q = np.identity( len(pred_control_val[0])*3)
+
+# state_val_Q = np.array([1,1,0.05,2,2,0.05,3,3,0.1])
+# state_val_Q = np.diag(state_val_Q)
+
+
+# Ak in non linear equation
+def AkFn( state_val, control_val, dt) :
     x_k = state_val[0][0]
     y_k = state_val[1][0]
     theta_k = state_val[2][0]
     v_k = control_val[0][0]
     w_k = control_val[1][0]
 
-    return np.array( [ [1, 0, -(v_k*math.sin(theta_k)*dt) ], 
-                       [0, 1,  (v_k*math.cos(theta_k)*dt) ], 
-                       [0, 0,                          1  ]])
-
-def B_k( state_val, control_val, dt) :
+    return np.array( [ [1, 0, 0 ], 
+                       [0, 1, 0 ], 
+                       [0, 0, 1 ]])
+# Bk in non linear equation
+def BkFn( state_val, control_val, dt) :
     x_k = state_val[0][0]
     y_k = state_val[1][0]
     theta_k = state_val[2][0]
@@ -50,9 +92,220 @@ def B_k( state_val, control_val, dt) :
                        [math.sin(theta_k)*dt, 0 ],
                        [                   0, dt]])
 
-A_0 = A_k( init_state_val, init_control_val, 0.01)
-B_0 = B_k( init_state_val, init_control_val, 0.01)
-X_1 = np.dot(A_0 , init_state_val) + np.dot(B_0 , init_control_val)
 
-print(X_1)
+# Ak in linear equation
+def Ak_linearFn( state_val, control_val, dt) :
+    x_k = state_val[0][0]
+    y_k = state_val[1][0]
+    theta_k = state_val[2][0]
+    v_k = control_val[0][0]
+    w_k = control_val[1][0]
+
+    return np.array( [ [1, 0, -(v_k*math.sin(theta_k)*dt) ], 
+                       [0, 1,  (v_k*math.cos(theta_k)*dt) ], 
+                       [0, 0,                           1 ]])
+# Bk in linear equation
+def Bk_linearFn( state_val, control_val, dt) :
+    x_k = state_val[0][0]
+    y_k = state_val[1][0]
+    theta_k = state_val[2][0]
+    v_k = control_val[0][0]
+    w_k = control_val[1][0]
+
+    return np.array( [ [math.cos(theta_k)*dt, 0 ],
+                       [math.sin(theta_k)*dt, 0 ],
+                       [                   0, dt]])
+
+
+# state value obtain from nonlinear state equation
+def Ak_Bk_constant( init_state, dt, pred_control_val):
+
+    state_val = init_state
+    dt = dt
+    pred_control_val = pred_control_val
+    Ak = np.empty([0,3,3])
+    Bk = np.empty([0,3,2])
+    pred_state_val = init_state
+
+    for i in range( len(pred_control_val[0])) :
+        control_val = np.array([ [pred_control_val[0][i]], [pred_control_val[1][i]]])
+        A_i = AkFn( state_val, control_val, dt)
+        B_i = BkFn( state_val, control_val, dt)
+        X_ipluse1 = np.dot(A_i , state_val) + np.dot(B_i , control_val)
+        state_val = X_ipluse1
+
+        Ak = np.vstack( (Ak, A_i[np.newaxis, :, :]))
+        Bk = np.vstack( (Bk, B_i[np.newaxis, :, :]))
+        pred_state_val = np.hstack( (pred_state_val, X_ipluse1))
+
+    # print("Ak_Bk_constant ")
+    # print(pred_state_val)
+    # print(Ak)
+    # print(Bk)
+
+    return Ak, Bk, pred_state_val
+
+ 
+# obtain A, B values related to nonlinear equation
+def Ak_Bk_linConst( init_state, dt, pred_control_val):
+
+    state_val = init_state
+    dt = dt
+    pred_control_val = pred_control_val
+    Ak_linear = np.empty([0,3,3])
+    Bk_linear = np.empty([0,3,2])
+    pred_state_val_linear = init_state
+
+    Ak, Bk, pred_state_val = Ak_Bk_constant(init_state, dt, pred_control_val)
+
+    for i in range( len(pred_control_val[0])):
+        control_val = np.array([ [pred_control_val[0][i]], [pred_control_val[1][i]]])
+        state_val = np.array([ [pred_state_val[0][i]], [pred_state_val[1][i]], [pred_state_val[2][i]]])
+
+        A_i = Ak_linearFn( state_val, control_val, dt)
+        B_i = Bk_linearFn( state_val, control_val, dt)
+        X_ipluse1 = np.dot(A_i , state_val) + np.dot(B_i , control_val)
+
+        Ak_linear = np.vstack( (Ak_linear, A_i[np.newaxis, :, :]))
+        Bk_linear = np.vstack( (Bk_linear, B_i[np.newaxis, :, :]))
+        pred_state_val_linear = np.hstack( (pred_state_val_linear, X_ipluse1))
+
+    # print("Ak_Bk_linearConst")
+    # print(pred_state_val_linear.round(decimals=3))
+    # print(Ak_linear)
+    # print(Bk_linear)
+
+    return Ak_linear, Bk_linear, pred_state_val_linear
+
+
+# obtain phi and tau values related to linear equation
+def phi_tau_constant( init_state, dt, pred_control_val):
+    Ak_linear, Bk_linear, pred_state_val_linear = Ak_Bk_linConst( init_state, dt, pred_control_val)
+
+    # phi design
+    phi = np.empty([0,3])
+    base_matrix = np.identity(3)
+    for Ak_linears in Ak_linear:
+        base_matrix = np.dot( Ak_linears, base_matrix)
+        phi = np.vstack( (phi, base_matrix))
+    # print("phi", phi.round(decimals=2))
+
+    # Tau design
+    tau = np.empty([0, len(Ak_linear)*2])
+    for i in range( len(Ak_linear)):
+        # B value raw design
+        # 1-[ B0,  0,  0,  0], 2-[ B0, B1,  0,  0], 3-[ B0, B1, B2,  0], 3-[ B0, B1, B2, B3]
+        # print("\nB raw loop ", i)
+        tau_Braw = np.empty([0,3,2])
+        for j in range(i+1):
+            tau_Braw = np.vstack( (tau_Braw, Bk_linear[j][np.newaxis, :, :]))
+        for j in range(len(Ak_linear)-i-1):
+            tau_Braw = np.vstack( (tau_Braw, np.zeros([3,2])[np.newaxis, :, :]))
+        # print(tau_Braw.round(decimals=2))
+
+        # A value raw design
+        # 1-[ I,  I,  I,  I], 2-[ A1, I,  I,  I], 3-[ A2.A1, A2, I,  I], 3-[ A3.A2.A1, A3.A2, A3, I]
+        # print("\nA raw loop ", i)
+        tau_Araw = np.empty([0,3,3])
+        for j in range(i,0,-1):
+            Aks = np.identity(3)
+            for c in range(j):
+                Aks = np.dot(Aks, Ak_linear[i-c])
+            tau_Araw = np.vstack( (tau_Araw, Aks[np.newaxis, :, :]))
+        for j in range(len(Ak_linear)-i):
+            tau_Araw = np.vstack( (tau_Araw, np.identity(3)[np.newaxis, :, :]))
+        # print(tau_Araw.round(decimals=2))
+
+
+        # multiply raw elements
+        # 1-[ B0, 0, 0, 0], 2-[ A1.B0, B1, 0, 0], 3-[ A2.A1.B0, A2.B1, B2, 0], 3-[ A3.A2.A1.B0, A3.A2.B1, A3.B2, B3]
+        tau_raw = np.empty([3,0])
+        for j in range(len(tau_Araw)):
+            tau_raw = np.hstack( (tau_raw, np.dot(tau_Araw[j], tau_Braw[j])))
+        # print(tau_raw.round(decimals=2))
+
+
+        tau = np.vstack( (tau, tau_raw))
+
+    # print("tau", tau.round(decimals=2))
+
+    return phi, tau
+# phi_tau_constant( X_0, 0.01, pred_control_val)
+
+
+# obtain QP matrix value H and F
+def QP_H_F_constant( init_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q):
+
+    phi, tau = phi_tau_constant( init_state, dt, pred_control_val)
+    ref_state_val = ref_state_val.flatten(order='F').reshape( (len(ref_state_val[0])*3), 1)
+
+    QP_H = np.dot( tau.T , state_val_Q)
+    QP_H = np.dot( QP_H, tau)
+    QP_H = QP_H + control_val_R
+
+    QP_F = np.dot( phi, init_state) - ref_state_val[3:,:]
+    QP_F = np.dot( state_val_Q , QP_F) 
+    QP_F = np.dot( tau.T , QP_F) 
+
+
+    # print("QP_H", QP_H.round(decimals=2))
+    # print("QP_F", QP_F.round(decimals=2))
+
+    return QP_H, QP_F
+
+
+# Solving the QP problem
+def QP_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q):
+    H, F = QP_H_F_constant(init_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+
+    H = np.array( H, dtype=c_double)
+    F = np.array( F.flatten(), dtype=c_double )
+
+    A = np.identity( len(pred_control_val[0])*2)
+    A = np.array(A, dtype=c_double)
+
+    bupper = np.tile( [3,1], len(pred_control_val[0]))
+    bupper = np.array( bupper, dtype=c_double)
+
+    blower = np.tile( [-0.1,-1], len(pred_control_val[0]))
+    blower= np.array( blower, dtype=c_double)
+
+    sense = np.zeros(6)
+    sense = np.array( sense, dtype=c_int)
+
+    x,fval,exitflag,info = daqp.solve(H,F,A,bupper,blower,sense)
+    # print("Optimal solution:")
+    # print(x)
+    # print("Exit flag:",exitflag)
+    print("Info:",info)
+    control_val = x.reshape( len(pred_control_val[0]),2).T
+    print("control_val", control_val.round(decimals=3))
+    Ak, Bk, state_value = Ak_Bk_constant( init_state, dt, control_val)
+    print("state_value", state_value.round(decimals=3))
+
+    return control_val, state_value
+
+
+
+# QP_solutions(X_0, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+    
+# H, f = QP_H_F_constant(X_0, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+
+# H = np.array( H, dtype=c_double)
+
+# f = np.array( f.flatten(), dtype=c_double )
+
+# A = np.identity(6)
+# A = np.array(A, dtype=c_double)
+
+# bupper = np.array([2,2,2,2,2,2], dtype=c_double)
+# blower= np.array([-2,-2,-2,-2,-2,-2], dtype=c_double)
+# sense = np.array([0,0,0,0,0,0], dtype=c_int)
+
+# x,fval,exitflag,info = daqp.solve(H,f,A,bupper,blower,sense)
+# print("Optimal solution:")
+# print(x)
+# print("Exit flag:",exitflag)
+# print("Info:",info)
+
 
