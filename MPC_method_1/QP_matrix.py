@@ -1,46 +1,3 @@
-
-
-# state var - x_k, y_k, theta_k(radian)
-# control var - v_k, w_k
-
-# state equations
-# x_k+1 = x_k + v_k.cos(theta_k).dt
-# y_k+1 = y_k + v_k.sin(theta_k).dt
-# theta_k+1 = theta_k + w_k.dt
-
-# linearize state equations
-# x_k+1 = x_k  +  v_k.cos(theta_k).dt  -  v_k.sin(theta_k).dt.theta_k
-# y_k+1 = y_k  +  v_k.sin(theta_k).dt  +  v_k.cos(theta_k).dt.theta_k
-# theta_k+1 = theta_k + w_k.dt
-
-# | X_k+1     |   | 1  0  -v_k.sin(theta_k).dt | | X_k     |     | cos(theta_k).dt   0 |
-# | Y_k+1     | = | 0  1   v_k.cos(theta_k).dt |.| Y_k     |  +  | sin(theta_k).dt   0 |
-# | theta_k+1 |   | 0  0                     1 | | theta_k |     |               0  dt |
-
-# X_predict = phi . x_0 + tau .U_predict  -------- STATE MATRIX
-
-# X_predict = [ x_1, y_1, theta_1, x_2, y_2, theta_2, x_3, y_3, theta_3, x_4, y_4, theta_4] ^ T
-
-# phi = [          A0]
-#       [       A1.A0]
-#       [    A2.A1.A0]
-#       [ A3.A2.A1.A0]
-
-# tau = [          B0,         0,       0,      0]
-#       [       A1.B0,        B1,       0,      0]    
-#       [    A2.A1.B0,     A2.B1,      B2,      0]  
-#       [ A3.A2.A1.B0,  A3.A2.B1,   A3.B2,     B3]
-
-# U_predict = [ v0, w0, v1, w1, v2, w2, v3, w3, v4, w4] ^ T
-
-# Cost Fn
-# J = (X_predict - X_ref)^T . Q . (X_predict - X_ref) + U_predict^T . R . U_predict
-#   = (1/2) . U_predict^T . H . U_predict + f^T . U_predict + constant
-
-# H = tau^T . Q . tau + R
-# f = tau^T . Q . ( phi . x_0 - X_ref)
-
-
 import daqp
 from ctypes import * 
 import ctypes.util
@@ -51,6 +8,7 @@ import math
 
 # X_0 = np.array([ [1], [2], [0]])
 # dt = 0.1
+# dt should be very small
 
 # # reference state values [[ x],[ y],[ z]]
 # ref_state_val = np.array([[0, 1, 1.1, 1.2], 
@@ -68,6 +26,40 @@ import math
 # state_val_Q = np.array([1,1,0.05,2,2,0.05,3,3,0.1])
 # state_val_Q = np.diag(state_val_Q)
 
+
+
+
+
+# -------------------------- convert to rbot frame coords --------------------
+# 0 = robot orientation
+# rotation_matrix = |  cos( 0), sin( 0) |
+#                   | -sin( 0), cos( 0) |
+
+# convert coordinate to robot frame
+def Convert_To_Robot_Frame( init_state, ref_state_val):
+    ref_state_val = ref_state_val - init_state
+    rotation_matrix = np.array([[ np.cos(init_state[2][0]), np.sin(init_state[2][0])],
+                                [ -np.sin(init_state[2][0]),  np.cos(init_state[2][0])]])
+    
+    for i in range( len(ref_state_val[0])):
+        rotated_coord = rotation_matrix @ ref_state_val[:2, i]
+        ref_state_val[:2, i] = rotated_coord
+    init_state = np.array([[0], [0], [0] ])
+
+    return init_state, ref_state_val
+
+
+
+
+
+# ---------------------- state equations ----------------------------------------
+# x_k+1 = x_k + v_k.cos(theta_k).dt
+# y_k+1 = y_k + v_k.sin(theta_k).dt
+# theta_k+1 = theta_k + w_k.dt
+
+# | X_k+1     |   | 1  0  0 | | X_k     |     | cos(theta_k).dt   0 | | V_k |
+# | Y_k+1     | = | 0  1  0 |.| Y_k     |  +  | sin(theta_k).dt   0 |.| w_k |
+# | theta_k+1 |   | 0  0  1 | | theta_k |     |               0  dt | 
 
 # Ak in non linear equation
 def AkFn( state_val, control_val, dt) :
@@ -92,31 +84,6 @@ def BkFn( state_val, control_val, dt) :
                        [math.sin(theta_k)*dt, 0 ],
                        [                   0, dt]])
 
-
-# Ak in linear equation
-def Ak_linearFn( state_val, control_val, dt) :
-    x_k = state_val[0][0]
-    y_k = state_val[1][0]
-    theta_k = state_val[2][0]
-    v_k = control_val[0][0]
-    w_k = control_val[1][0]
-
-    return np.array( [ [1, 0, -(v_k*math.sin(theta_k)*dt) ], 
-                       [0, 1,  (v_k*math.cos(theta_k)*dt) ], 
-                       [0, 0,                           1 ]])
-# Bk in linear equation
-def Bk_linearFn( state_val, control_val, dt) :
-    x_k = state_val[0][0]
-    y_k = state_val[1][0]
-    theta_k = state_val[2][0]
-    v_k = control_val[0][0]
-    w_k = control_val[1][0]
-
-    return np.array( [ [math.cos(theta_k)*dt, 0 ],
-                       [math.sin(theta_k)*dt, 0 ],
-                       [                   0, dt]])
-
-
 # state value obtain from nonlinear state equation
 def Ak_Bk_constant( init_state, dt, pred_control_val):
 
@@ -139,12 +106,54 @@ def Ak_Bk_constant( init_state, dt, pred_control_val):
         pred_state_val = np.hstack( (pred_state_val, X_ipluse1))
 
     # print("Ak_Bk_constant ")
-    # print(pred_state_val)
+    # print( pred_state_val.round(decimals=3))
     # print(Ak)
     # print(Bk)
 
     return Ak, Bk, pred_state_val
 
+
+
+
+
+# ----------------- linearize state equations ------------------------------------
+# x_k+1 = x_k  +  v_k.cos(theta_k).dt  -  v_k.sin(theta_k).dt.theta_k
+# y_k+1 = y_k  +  v_k.sin(theta_k).dt  +  v_k.cos(theta_k).dt.theta_k
+# theta_k+1 = theta_k + w_k.dt
+
+# | X_k+1     |   | 1  0  -v_k.sin(theta_k).dt | | X_k     |     | cos(theta_k).dt   0 | | V_k |
+# | Y_k+1     | = | 0  1   v_k.cos(theta_k).dt |.| Y_k     |  +  | sin(theta_k).dt   0 |.| w_k |
+# | theta_k+1 |   | 0  0                     1 | | theta_k |     |               0  dt |
+
+#     X_1    =           A_0                 . X_0         +          B_0            . U_0
+#     X_2    =           A_1                 . X_1         +          B_1            . U_1
+
+# Ak in linear equation
+def Ak_linearFn( state_val, control_val, dt) :
+    x_k = state_val[0][0]
+    y_k = state_val[1][0]
+    theta_k = state_val[2][0]
+    v_k = control_val[0][0]
+    w_k = control_val[1][0]
+
+    # return np.array( [ [1, 0, 0 ], 
+    #                    [0, 1, 0 ], 
+    #                    [0, 0, 1 ]])
+
+    return np.array( [ [1, 0, -(v_k*math.sin(theta_k)*dt) ], 
+                       [0, 1,  (v_k*math.cos(theta_k)*dt) ], 
+                       [0, 0,                           1 ]])
+# Bk in linear equation
+def Bk_linearFn( state_val, control_val, dt) :
+    x_k = state_val[0][0]
+    y_k = state_val[1][0]
+    theta_k = state_val[2][0]
+    v_k = control_val[0][0]
+    w_k = control_val[1][0]
+
+    return np.array( [ [math.cos(theta_k)*dt, 0 ],
+                       [math.sin(theta_k)*dt, 0 ],
+                       [                   0, dt]])
  
 # obtain A, B values related to nonlinear equation
 def Ak_Bk_linConst( init_state, dt, pred_control_val):
@@ -160,14 +169,14 @@ def Ak_Bk_linConst( init_state, dt, pred_control_val):
 
     for i in range( len(pred_control_val[0])):
         control_val = np.array([ [pred_control_val[0][i]], [pred_control_val[1][i]]])
-        state_val = np.array([ [pred_state_val[0][i]], [pred_state_val[1][i]], [pred_state_val[2][i]]])
+        state_val = np.array([ [pred_state_val[0][i+1]], [pred_state_val[1][i+1]], [pred_state_val[2][i+1]]])
 
-        A_i = Ak_linearFn( state_val, control_val, dt)
-        B_i = Bk_linearFn( state_val, control_val, dt)
-        X_ipluse1 = np.dot(A_i , state_val) + np.dot(B_i , control_val)
+        A_i_linConst = Ak_linearFn( state_val, control_val, dt)
+        B_i_linConst = Bk_linearFn( state_val, control_val, dt)
+        X_ipluse1 = np.dot(A_i_linConst , state_val) + np.dot(B_i_linConst , control_val)
 
-        Ak_linear = np.vstack( (Ak_linear, A_i[np.newaxis, :, :]))
-        Bk_linear = np.vstack( (Bk_linear, B_i[np.newaxis, :, :]))
+        Ak_linear = np.vstack( (Ak_linear, A_i_linConst[np.newaxis, :, :]))
+        Bk_linear = np.vstack( (Bk_linear, B_i_linConst[np.newaxis, :, :]))
         pred_state_val_linear = np.hstack( (pred_state_val_linear, X_ipluse1))
 
     # print("Ak_Bk_linearConst")
@@ -177,6 +186,25 @@ def Ak_Bk_linConst( init_state, dt, pred_control_val):
 
     return Ak_linear, Bk_linear, pred_state_val_linear
 
+
+
+
+
+
+# ----------------------- STATE MATRIX ------------------------------------------
+# X_predict = phi . x_0 + tau .U_predict  
+
+# X_predict = [ x_1, y_1, theta_1, x_2, y_2, theta_2, x_3, y_3, theta_3, x_4, y_4, theta_4] ^ T
+
+# phi = [          A0]
+#       [       A1.A0]
+#       [    A2.A1.A0]
+#       [ A3.A2.A1.A0]
+
+# tau = [          B0,         0,       0,      0]
+#       [       A1.B0,        B1,       0,      0]    
+#       [    A2.A1.B0,     A2.B1,      B2,      0]  
+#       [ A3.A2.A1.B0,  A3.A2.B1,   A3.B2,     B3]
 
 # obtain phi and tau values related to linear equation
 def phi_tau_constant( init_state, dt, pred_control_val):
@@ -230,8 +258,17 @@ def phi_tau_constant( init_state, dt, pred_control_val):
     # print("tau", tau.round(decimals=2))
 
     return phi, tau
-# phi_tau_constant( X_0, 0.01, pred_control_val)
 
+
+
+
+
+# --------------------------- Cost Fn --------------------------------------
+# J = (X_predict - X_ref)^T . Q . (X_predict - X_ref) + U_predict^T . R . U_predict
+#   = (1/2) . U_predict^T . H . U_predict + f^T . U_predict + constant
+
+# H = tau^T . Q . tau + R
+# f = tau^T . Q . ( phi . x_0 - X_ref)
 
 # obtain QP matrix value H and F
 def QP_H_F_constant( init_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q):
@@ -243,7 +280,7 @@ def QP_H_F_constant( init_state, dt, pred_control_val, ref_state_val, control_va
     QP_H = np.dot( QP_H, tau)
     QP_H = QP_H + control_val_R
 
-    QP_F = np.dot( phi, init_state) - ref_state_val[3:,:]
+    QP_F = np.dot( phi, init_state) - ref_state_val[3:48,:]
     QP_F = np.dot( state_val_Q , QP_F) 
     QP_F = np.dot( tau.T , QP_F) 
 
@@ -252,6 +289,61 @@ def QP_H_F_constant( init_state, dt, pred_control_val, ref_state_val, control_va
     # print("QP_F", QP_F.round(decimals=2))
 
     return QP_H, QP_F
+
+
+
+
+
+# ------------------    contour control --------------------------------
+# error_2 - perpendiculer distance
+# error_1 - parallel distance
+# error_0 - orientation error
+
+# error_2 = [ -sin(theta_r)   cos(theta_r)   0].[         x_1 - x_ref ]
+#                                               [         y_1 - y_ref ]
+#                                               [ theta_1 - theta_ref ]
+# error_1 = [  cos(theta_r)   sin(theta_r)   0].[         x_1 - x_ref ]
+#                                               [         y_1 - y_ref ]
+#                                               [ theta_1 - theta_ref ]
+# error_0 = [  0   0   1].[         x_1 - x_ref ]
+#                         [         y_1 - y_ref ]
+#                         [ theta_1 - theta_ref ]
+
+# | error_2 |    | -sin(theta_r)   cos(theta_r)   0 |   |         x_1 - x_ref |
+# | error_1 | =  |  cos(theta_r)   sin(theta_r)   0 | . |         y_1 - y_ref |
+# | error_0 |    |             0              0   1 |   | theta_1 - theta_ref |
+ 
+#  [ Error ]  =                   S                   .    [ X_pred - X_ref]
+
+#  [ Error ]^T . Q . [ Error ] = [ X_pred - X_ref]^T  .  S^T  .  Q  .  S  .  [ X_pred - X_ref]
+
+# J = [ Error ]^T . Q . [ Error ] + U_predict^T . R . U_predict
+# J = [ X_pred - X_ref]^T  .  Q_  .  [ X_pred - X_ref] + U_predict^T . R . U_predict
+# Q_ = S^T  .  Q  .  S 
+
+# Q matrix obtain
+def contour_constant( pred_control_val, ref_state_val, state_val_Q) :
+    num_oca = len(pred_control_val[0])
+    Q_matrix = np.zeros((num_oca*3, num_oca*3))
+    for i in range( num_oca):
+        ref_theta = ref_state_val[2][i+1]
+        S = np.array( [ [ -np.sin( ref_theta), np.cos( ref_theta),   0],
+                        [  np.cos( ref_theta), np.sin( ref_theta),   0],
+                        [                    0,                 0,   1] ])
+        Q_matrix[ i*3: i*3+3, i*3: i*3+3] = S
+        # print(S)
+
+    Q_ = np.dot( Q_matrix.T , state_val_Q)
+    Q_ = np.dot( Q_ , Q_matrix)
+
+    return Q_
+
+
+
+
+
+# -------------------------- daqp general method ------------------------------
+# (xstar,fval,exitflag,info) = daqp.solve(H,f,A,bupper,blower,sense)
 
 
 # Solving the QP problem
@@ -287,25 +379,38 @@ def QP_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R,
 
 
 
-# QP_solutions(X_0, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
-    
-# H, f = QP_H_F_constant(X_0, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
 
-# H = np.array( H, dtype=c_double)
+# -------------------------- daqp contour method -----------------------------
+# Solving the QP problem with contuor controlling
+def QPC_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q):
+    Q_matrix = contour_constant( pred_control_val, ref_state_val, state_val_Q)
+    H, F = QP_H_F_constant(init_state, dt, pred_control_val, ref_state_val, control_val_R, Q_matrix)
 
-# f = np.array( f.flatten(), dtype=c_double )
+    H = np.array( H, dtype=c_double)
+    F = np.array( F.flatten(), dtype=c_double )
 
-# A = np.identity(6)
-# A = np.array(A, dtype=c_double)
+    A = np.identity( len(pred_control_val[0])*2)
+    A = np.array(A, dtype=c_double)
 
-# bupper = np.array([2,2,2,2,2,2], dtype=c_double)
-# blower= np.array([-2,-2,-2,-2,-2,-2], dtype=c_double)
-# sense = np.array([0,0,0,0,0,0], dtype=c_int)
+    bupper = np.tile( [3,1], len(pred_control_val[0]))
+    bupper = np.array( bupper, dtype=c_double)
 
-# x,fval,exitflag,info = daqp.solve(H,f,A,bupper,blower,sense)
-# print("Optimal solution:")
-# print(x)
-# print("Exit flag:",exitflag)
-# print("Info:",info)
+    blower = np.tile( [-0.1,-1], len(pred_control_val[0]))
+    blower= np.array( blower, dtype=c_double)
 
+    sense = np.zeros(6)
+    sense = np.array( sense, dtype=c_int)
+
+    x,fval,exitflag,info = daqp.solve(H,F,A,bupper,blower,sense)
+    # print("Optimal solution:")
+    # print(x)
+    # print("Exit flag:",exitflag)
+    print("Info:",info)
+    print("Exit flag:",exitflag)
+    control_val = x.reshape( len(pred_control_val[0]),2).T
+    print("control_val", control_val.round(decimals=3))
+    Ak, Bk, state_value = Ak_Bk_constant( init_state, dt, control_val)
+    print("state_value", state_value.round(decimals=3))
+
+    return control_val, state_value
 

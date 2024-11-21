@@ -1,5 +1,52 @@
 
 # MPC controller
+# convert frame to robot frame
+# referance path get from follow_path.py
+
+# -------------------------- convert to rbot frame coords --------------------
+# 0 = robot orientation
+# rotation_matrix = |  cos( 0), sin( 0) |
+#                   | -sin( 0), cos( 0) |
+
+# -------------------------- MPC controller ----------------------------
+# state var - x_k, y_k, theta_k(radian)
+# control var - v_k, w_k
+
+# state equations
+# x_k+1 = x_k + v_k.cos(theta_k).dt
+# y_k+1 = y_k + v_k.sin(theta_k).dt
+# theta_k+1 = theta_k + w_k.dt
+
+# linearize state equations
+# x_k+1 = x_k  +  v_k.cos(theta_k).dt  -  v_k.sin(theta_k).dt.theta_k
+# y_k+1 = y_k  +  v_k.sin(theta_k).dt  +  v_k.cos(theta_k).dt.theta_k
+# theta_k+1 = theta_k + w_k.dt
+
+# | X_k+1     |   | 1  0  -v_k.sin(theta_k).dt | | X_k     |     | cos(theta_k).dt   0 |
+# | Y_k+1     | = | 0  1   v_k.cos(theta_k).dt |.| Y_k     |  +  | sin(theta_k).dt   0 |
+# | theta_k+1 |   | 0  0                     1 | | theta_k |     |               0  dt |
+
+# X_predict = phi . x_0 + tau .U_predict  -------- STATE MATRIX
+
+# X_predict = [ x_1, y_1, theta_1, x_2, y_2, theta_2, x_3, y_3, theta_3, x_4, y_4, theta_4] ^ T
+
+# phi = [          A0]
+#       [       A1.A0]
+#       [    A2.A1.A0]
+#       [ A3.A2.A1.A0]
+
+# tau = [          B0,         0,       0,      0]
+#       [       A1.B0,        B1,       0,      0]    
+#       [    A2.A1.B0,     A2.B1,      B2,      0]  
+#       [ A3.A2.A1.B0,  A3.A2.B1,   A3.B2,     B3]
+
+# U_predict = [ v0, w0, v1, w1, v2, w2, v3, w3, v4, w4] ^ T
+
+# J = (X_predict - X_ref)^T . Q . (X_predict - X_ref) + U_predict^T . R . U_predict
+#   = (1/2) . U_predict^T . H . U_predict + f^T . U_predict + constant
+
+# H = tau^T . Q . tau + R
+# f = tau^T . Q . ( phi . x_0 - X_ref)
 
 
 import rospy
@@ -8,49 +55,43 @@ from tf.transformations import *
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 import QP_matrix as QPFn
+import math
+import follow_path as FP
 
 
-
-X_0 = np.array([ [0], [0.05], [0]])
-dt = 0.025
+X_0 = np.array([ [0], [0.5], [0]])
+dt = 0.05
 
 # reference state values [[ x],[ y],[ z]]
 ref_state_val = np.array([[0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75], 
                           [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0], 
                           [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
 
-# ref_state_val = np.array([[0, 0.05, 0.1, 0.15, 0.2, 0.25], 
-#                           [0, 0, 0, 0, 0, 0], 
-#                           [0, 0, 0, 0, 0, 0]])
-
-
 # U_predict [ [v], [w]]
 pred_control_val = np.array([[ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                              [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
 
 
-control_val_R = np.zeros( len(pred_control_val[0])*2)
-# control_val_R = np.identity( len(pred_control_val[0])*2) *0.05
+# control_val_R = np.zeros( len(pred_control_val[0])*2)
+control_val_R = np.identity( len(pred_control_val[0])*2) *0.05
 
-
-# state_val_Q = np.identity( len(pred_control_val[0])*3)
-
-# state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,15,0.15, 15,15,0.2, 20,20,0.2, 20,20,0.25, 25,25,0.25, 25,25,0.3, 30,30,0.3, 30,30,0.35, 35,35,0.35, 40,40,0.4])
-state_val_Q = np.array([1,1,0.05, 1,1,0.05, 2,2,0.1, 2,2,0.1, 3,3,0.15, 3,3,0.15, 4,4,0.2, 4,4,0.2, 5,5,0.25, 5,5,0.25, 6,6,0.3, 6,6,0.3, 7,7,0.35, 7,7,0.35, 8,8,0.4])
-# state_val_Q = np.array([10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1])
-# state_val_Q = np.array([8,8,0.4, 7,7,0.35, 7,7,0.35, 6,6,0.3, 6,6,0.3, 5,5,0.25, 5,5,0.25, 4,4,0.2, 4,4,0.2, 3,3,0.15, 3,3,0.15, 2,2,0.1, 2,2,0.1, 1,1,0.05, 1,1,0.05])
+state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,15,0.15, 15,15,0.2, 20,20,0.2, 20,20,0.25, 25,25,0.25, 25,25,0.3, 30,30,0.3, 30,30,0.35, 35,35,0.35, 40,40,0.4])
 state_val_Q = np.diag(state_val_Q)
-
-while (True):
-    control_val, state_value= QPFn.QP_solutions(X_0, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
-    if ( np.isnan(control_val[0][0])) :
-        print(control_val[0][0], type(control_val[0][0]))
-    else :
-        break
 
 
 refMarkerArray = MarkerArray()
 predictMarkerArray =MarkerArray()
+
+path_coords = FP.path_coordinate()
+inti_state, ref_state_val = QPFn.Convert_To_Robot_Frame( X_0, path_coords)
+# print(ref_state_val)
+
+while (True):
+    control_val, state_value= QPFn.QP_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+    if ( np.isnan(control_val[0][0])) :
+        print(control_val[0][0], type(control_val[0][0]))
+    else :
+        break
 
 
 def referance_markers( ref_val):
@@ -79,8 +120,8 @@ def referance_markers( ref_val):
         marker.color.a = 1.0
 
         # Pose
-        marker.pose.position.x = ref_val[0][i] *10
-        marker.pose.position.y = ref_val[1][i] *10
+        marker.pose.position.x = ref_val[0][i] * 10
+        marker.pose.position.y = ref_val[1][i] * 10
         marker.pose.position.z = 0.4
 
         # matrix shift
@@ -158,6 +199,13 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         
         refMarker_pub.publish( referance_markers(ref_state_val))
+
+        # while (True):
+        #     control_val, state_value= QPFn.QP_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+        #     if ( np.isnan(control_val[0][0])) :
+        #         print(control_val[0][0], type(control_val[0][0]))
+        #     else :
+        #         break
         predictMarker_pub.publish( predicted_markers(state_value))
 
         rate.sleep()
