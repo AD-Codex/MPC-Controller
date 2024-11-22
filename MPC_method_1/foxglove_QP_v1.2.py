@@ -1,25 +1,31 @@
 
 # MPC controller with contouring controling
 
-# -------------------------- MPC controller ----------------------------
-# state var - x_k, y_k, theta_k(radian)
-# control var - v_k, w_k
-
-# state equations
+# ---------------------- state equations ----------------------------------------
 # x_k+1 = x_k + v_k.cos(theta_k).dt
 # y_k+1 = y_k + v_k.sin(theta_k).dt
 # theta_k+1 = theta_k + w_k.dt
 
-# linearize state equations
+# | X_k+1     |   | 1  0  0 | | X_k     |     | cos(theta_k).dt   0 | | V_k |
+# | Y_k+1     | = | 0  1  0 |.| Y_k     |  +  | sin(theta_k).dt   0 |.| w_k |
+# | theta_k+1 |   | 0  0  1 | | theta_k |     |               0  dt | 
+
+
+# ----------------- linearize state equations ------------------------------------
 # x_k+1 = x_k  +  v_k.cos(theta_k).dt  -  v_k.sin(theta_k).dt.theta_k
 # y_k+1 = y_k  +  v_k.sin(theta_k).dt  +  v_k.cos(theta_k).dt.theta_k
 # theta_k+1 = theta_k + w_k.dt
 
-# | X_k+1     |   | 1  0  -v_k.sin(theta_k).dt | | X_k     |     | cos(theta_k).dt   0 |
-# | Y_k+1     | = | 0  1   v_k.cos(theta_k).dt |.| Y_k     |  +  | sin(theta_k).dt   0 |
+# | X_k+1     |   | 1  0  -v_k.sin(theta_k).dt | | X_k     |     | cos(theta_k).dt   0 | | V_k |
+# | Y_k+1     | = | 0  1   v_k.cos(theta_k).dt |.| Y_k     |  +  | sin(theta_k).dt   0 |.| w_k |
 # | theta_k+1 |   | 0  0                     1 | | theta_k |     |               0  dt |
 
-# X_predict = phi . x_0 + tau .U_predict  -------- STATE MATRIX
+#     X_1    =           A_0                 . X_0         +          B_0            . U_0
+#     X_2    =           A_1                 . X_1         +          B_1            . U_1
+
+
+# ----------------------- STATE MATRIX ------------------------------------------
+# X_predict = phi . x_0 + tau .U_predict  
 
 # X_predict = [ x_1, y_1, theta_1, x_2, y_2, theta_2, x_3, y_3, theta_3, x_4, y_4, theta_4] ^ T
 
@@ -32,8 +38,6 @@
 #       [       A1.B0,        B1,       0,      0]    
 #       [    A2.A1.B0,     A2.B1,      B2,      0]  
 #       [ A3.A2.A1.B0,  A3.A2.B1,   A3.B2,     B3]
-
-# U_predict = [ v0, w0, v1, w1, v2, w2, v3, w3, v4, w4] ^ T
 
 
 # ------------------    contour control --------------------------------
@@ -63,7 +67,8 @@
 # J = [ X_pred - X_ref]^T  .  Q_  .  [ X_pred - X_ref] + U_predict^T . R . U_predict
 # Q_ = S^T  .  Q  .  S 
 
-# ----------------------------------------------------------------------------------------------------
+
+
 
 import rospy
 import numpy as np
