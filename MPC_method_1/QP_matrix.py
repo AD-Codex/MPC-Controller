@@ -190,7 +190,6 @@ def Ak_Bk_linConst( init_state, dt, pred_control_val):
 
 
 
-
 # ----------------------- STATE MATRIX ------------------------------------------
 # X_predict = phi . x_0 + tau .U_predict  
 
@@ -280,7 +279,7 @@ def QP_H_F_constant( init_state, dt, pred_control_val, ref_state_val, control_va
     QP_H = np.dot( QP_H, tau)
     QP_H = QP_H + control_val_R
 
-    QP_F = np.dot( phi, init_state) - ref_state_val[3:48,:]
+    QP_F = np.dot( phi, init_state) - ref_state_val[3: len(pred_control_val[0])*3 + 3,:]
     QP_F = np.dot( state_val_Q , QP_F) 
     QP_F = np.dot( tau.T , QP_F) 
 
@@ -341,7 +340,6 @@ def contour_constant( pred_control_val, ref_state_val, state_val_Q) :
 
 
 
-
 # -------------------------- daqp general method ------------------------------
 # (xstar,fval,exitflag,info) = daqp.solve(H,f,A,bupper,blower,sense)
 
@@ -384,6 +382,8 @@ def QP_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R,
 # Solving the QP problem with contuor controlling
 def QPC_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q):
     Q_matrix = contour_constant( pred_control_val, ref_state_val, state_val_Q)
+
+    print(Q_matrix)
     H, F = QP_H_F_constant(init_state, dt, pred_control_val, ref_state_val, control_val_R, Q_matrix)
 
     H = np.array( H, dtype=c_double)

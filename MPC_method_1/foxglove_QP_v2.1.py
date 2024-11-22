@@ -1,10 +1,8 @@
 
-# MPC controller with contouring controling
-
-# -------------------------- convert to rbot frame coords --------------------
-# 0 = robot orientation
-# rotation_matrix = |  cos( 0), sin( 0) |
-#                   | -sin( 0), cos( 0) |
+# MPC controller
+# referance path get from follow_path.py
+# contour controlling
+# path following
 
 
 # ---------------------- state equations ----------------------------------------
@@ -75,7 +73,6 @@
 
 
 
-
 import rospy
 import numpy as np
 from tf.transformations import *
@@ -83,16 +80,16 @@ from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 import QP_matrix as QPFn
 import math
+import follow_path as FP
 
 
-
-X_0 = np.array([ [0.0], [0.1], [-0.2]])
+X_0 = np.array([ [0], [0.1], [-0.5]])
 dt = 0.05
 
 # reference state values [[ x],[ y],[ z]]
-ref_state_val = np.array([[0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75], 
-                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0], 
-                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
+ref_state_val = np.array([[0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00], 
+                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0], 
+                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
 
 # U_predict [ [v], [w]]
 pred_control_val = np.array([[ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -107,43 +104,64 @@ state_val_Q = np.diag(state_val_Q)
 
 
 refMarkerArray = MarkerArray()
-refMarker_count = 0
 predictMarkerArray =MarkerArray()
-predMarker_count = 0
 
-inti_state, ref_state_val = QPFn.Convert_To_Robot_Frame( X_0, ref_state_val)
+# inti_state = X_0
+# # print(ref_state_val)
+
+# while (True):
+#     control_val, state_value= QPFn.QP_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+#     if ( np.isnan(control_val[0][0])) :
+#         print(control_val[0][0], type(control_val[0][0]))
+#     else :
+#         break
 
 
-def delete_markers( marker_array, marker_count):
-    for i in range(marker_count %1000):
-        marker = Marker()
-        marker.header.frame_id = "base_link"
-        marker.header.stamp = rospy.Time.now()
-        marker.ns = "referance_markers"
+def Line_follow( inti_state, ref_state_val, step) :
+    dt = 0.05
+    pred_control_val = np.tile( [[1],[0]], 10)
+    ref_state_val = ref_state_val
+    control_val_R = np.identity( len(pred_control_val[0])*2) *0.05
+    state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,15,0.15, 15,15,0.2, 20,20,0.2, 20,20,0.25, 25,25,0.25])
+    state_val_Q = np.diag(state_val_Q)
 
-        marker.type = Marker.ARROW
-        marker.id = i
-        marker.action = Marker.DELETEALL
+    predicted_path = np.empty([0,3,11])
+    init_path = inti_state
 
-        marker_array.markers.append(marker)
+    for steps in range(step):
+
+        while (True):
+            control_val, state_value= QPFn.QP_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+            if ( np.isnan(control_val[0][0])) :
+                print(control_val[0][0], type(control_val[0][0]))
+            else :
+                break
+
+        inti_state = state_value[:, 1:2]
+        ref_state_val = ref_state_val[:,1:]
+
+        init_path = np.hstack( (init_path, inti_state))
+        predicted_path = np.vstack( (predicted_path, state_value[np.newaxis, :, :]))
+
+        # print(state_value)
     
-    return marker_array
+    return init_path, predicted_path
 
+
+# init_path, predicted_path = Line_follow( X_0, ref_state_val, 5)
 
 def referance_markers( ref_val):
     global refMarkerArray
-    global refMarker_count
 
     for i in range( len(ref_val[0])):
         marker = Marker()
         marker.header.frame_id = "base_link"
         marker.header.stamp = rospy.Time.now()
-        marker.ns = "referance_markers"
+        marker.ns = ""
 
         # Shape (mesh resource type - 10)
         marker.type = Marker.ARROW
         marker.id = i
-        refMarker_count = i
         marker.action = Marker.ADD
 
         # Scale
@@ -158,8 +176,8 @@ def referance_markers( ref_val):
         marker.color.a = 1.0
 
         # Pose
-        marker.pose.position.x = ref_val[0][i] *10
-        marker.pose.position.y = ref_val[1][i] *10
+        marker.pose.position.x = ref_val[0][i] * 10
+        marker.pose.position.y = ref_val[1][i] * 10
         marker.pose.position.z = 0.4
 
         # matrix shift
@@ -175,25 +193,21 @@ def referance_markers( ref_val):
 
         refMarkerArray.markers.append(marker)
 
-    
-
     return refMarkerArray
 
 
 def predicted_markers( ref_val):
     global predictMarkerArray
-    global predMarker_count
 
     for i in range( len(ref_val[0])):
         marker = Marker()
         marker.header.frame_id = "base_link"
         marker.header.stamp = rospy.Time.now()
-        marker.ns = "predicted_markers"
+        marker.ns = ""
 
         # Shape (mesh resource type - 10)
         marker.type = Marker.ARROW
         marker.id = 1000 + i
-        predMarker_count = 1000 + i
         marker.action = Marker.ADD
 
         # Scale
@@ -205,7 +219,7 @@ def predicted_markers( ref_val):
         marker.color.r = 0.0
         marker.color.g = 1.0
         marker.color.b = 0.0
-        marker.color.a = 1.0
+        marker.color.a = ( 1.0 - (i/len(ref_val[0])) )
 
         # Pose
         marker.pose.position.x = ref_val[0][i] *10
@@ -228,14 +242,6 @@ def predicted_markers( ref_val):
     return predictMarkerArray
 
 
-while (True):
-    control_val, state_value= QPFn.QPC_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
-    if ( np.isnan(control_val[0][0])) :
-        print(control_val[0][0], type(control_val[0][0]))
-    else :
-        break
-
-
 
 if __name__ == '__main__':
     rospy.init_node('MPC_QP_method')
@@ -247,12 +253,14 @@ if __name__ == '__main__':
     rate = rospy.Rate(10)
 
     while not rospy.is_shutdown():
-
-        # refMarker_pub.publish( delete_markers(refMarkerArray, refMarker_count))
+        
         refMarker_pub.publish( referance_markers(ref_state_val))
 
-        predictMarker_pub.publish( predicted_markers(state_value))
+        init_path, predicted_path = Line_follow( X_0, ref_state_val, 10)
 
+        for c in range(10):
+            predictMarker_pub.publish( predicted_markers( predicted_path[c]))
+            rospy.sleep(1)
 
         rate.sleep()
 
