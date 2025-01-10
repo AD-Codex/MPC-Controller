@@ -30,27 +30,6 @@ import math
 
 
 
-# -------------------------- convert to rbot frame coords --------------------
-# 0 = robot orientation
-# rotation_matrix = |  cos( 0), sin( 0) |
-#                   | -sin( 0), cos( 0) |
-
-# convert coordinate to robot frame
-def Convert_To_Robot_Frame( init_state, ref_state_val):
-    ref_state_val = ref_state_val - init_state
-    rotation_matrix = np.array([[ np.cos(init_state[2][0]), np.sin(init_state[2][0])],
-                                [ -np.sin(init_state[2][0]),  np.cos(init_state[2][0])]])
-    
-    for i in range( len(ref_state_val[0])):
-        rotated_coord = rotation_matrix @ ref_state_val[:2, i]
-        ref_state_val[:2, i] = rotated_coord
-    init_state = np.array([[0], [0], [0] ])
-
-    return init_state, ref_state_val
-
-
-
-
 
 # ---------------------- state equations ----------------------------------------
 # x_k+1 = x_k + v_k.cos(theta_k).dt
@@ -383,7 +362,7 @@ def QP_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R,
 def QPC_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q):
     Q_matrix = contour_constant( pred_control_val, ref_state_val, state_val_Q)
 
-    print(Q_matrix)
+    # print(Q_matrix)
     H, F = QP_H_F_constant(init_state, dt, pred_control_val, ref_state_val, control_val_R, Q_matrix)
 
     H = np.array( H, dtype=c_double)
@@ -392,10 +371,10 @@ def QPC_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R
     A = np.identity( len(pred_control_val[0])*2)
     A = np.array(A, dtype=c_double)
 
-    bupper = np.tile( [3,1], len(pred_control_val[0]))
+    bupper = np.tile( [8,2], len(pred_control_val[0]))
     bupper = np.array( bupper, dtype=c_double)
 
-    blower = np.tile( [-0.1,-1], len(pred_control_val[0]))
+    blower = np.tile( [-5,-2], len(pred_control_val[0]))
     blower= np.array( blower, dtype=c_double)
 
     sense = np.zeros(6)

@@ -1,7 +1,9 @@
 
 # MPC controller
 # convert frame to robot frame
+
 # referance path get from follow_path.py
+
 
 # -------------------------- convert to rbot frame coords --------------------
 # 0 = robot orientation
@@ -55,6 +57,7 @@ from tf.transformations import *
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 import QP_matrix as QPFn
+import Frame_convert as Fc
 import math
 import follow_path as FP
 
@@ -83,7 +86,7 @@ refMarkerArray = MarkerArray()
 predictMarkerArray =MarkerArray()
 
 path_coords = FP.path_coordinate()
-inti_state, ref_state_val = QPFn.Convert_To_Robot_Frame( X_0, path_coords)
+inti_state, ref_state_val = Fc.Convert_To_Robot_Frame( X_0, path_coords)
 # print(ref_state_val)
 
 while (True):
@@ -200,12 +203,12 @@ if __name__ == '__main__':
         
         refMarker_pub.publish( referance_markers(ref_state_val))
 
-        # while (True):
-        #     control_val, state_value= QPFn.QP_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
-        #     if ( np.isnan(control_val[0][0])) :
-        #         print(control_val[0][0], type(control_val[0][0]))
-        #     else :
-        #         break
+        while (True):
+            control_val, state_value= QPFn.QP_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+            if ( np.isnan(control_val[0][0])) :
+                print(control_val[0][0], type(control_val[0][0]))
+            else :
+                break
         predictMarker_pub.publish( predicted_markers(state_value))
 
         rate.sleep()

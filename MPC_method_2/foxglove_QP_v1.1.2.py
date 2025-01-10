@@ -1,11 +1,10 @@
 
-# MPC controller
-# convert frame to robot frame
+# MPCC controller
+# contour controlling               -------- 1
 
-# -------------------------- convert to rbot frame coords --------------------
-# 0 = robot orientation
-# rotation_matrix = |  cos( 0), sin( 0) |
-#                   | -sin( 0), cos( 0) |
+# apply MPCC
+# generate path following simulation
+
 
 
 # ---------------------- state equations ----------------------------------------
@@ -47,12 +46,33 @@
 #       [ A3.A2.A1.B0,  A3.A2.B1,   A3.B2,     B3]
 
 
-# --------------------------- Cost Fn --------------------------------------
-# J = (X_predict - X_ref)^T . Q . (X_predict - X_ref) + U_predict^T . R . U_predict
-#   = (1/2) . U_predict^T . H . U_predict + f^T . U_predict + constant
+# ------------------    contour control --------------------------------
+# error_2 - perpendiculer distance
+# error_1 - parallel distance
+# error_0 - orientation error
 
-# H = tau^T . Q . tau + R
-# f = tau^T . Q . ( phi . x_0 - X_ref)
+# error_2 = [ -sin(theta_r)   cos(theta_r)   0].[         x_1 - x_ref ]
+#                                               [         y_1 - y_ref ]
+#                                               [ theta_1 - theta_ref ]
+# error_1 = [  cos(theta_r)   sin(theta_r)   0].[         x_1 - x_ref ]
+#                                               [         y_1 - y_ref ]
+#                                               [ theta_1 - theta_ref ]
+# error_0 = [  0   0   1].[         x_1 - x_ref ]
+#                         [         y_1 - y_ref ]
+#                         [ theta_1 - theta_ref ]
+
+# | error_2 |    | -sin(theta_r)   cos(theta_r)   0 |   |         x_1 - x_ref |
+# | error_1 | =  |  cos(theta_r)   sin(theta_r)   0 | . |         y_1 - y_ref |
+# | error_0 |    |             0              0   1 |   | theta_1 - theta_ref |
+ 
+#  [ Error ]  =                   S                   .    [ X_pred - X_ref]
+
+#  [ Error ]^T . Q . [ Error ] = [ X_pred - X_ref]^T  .  S^T  .  Q  .  S  .  [ X_pred - X_ref]
+
+# J = [ Error ]^T . Q . [ Error ] + U_predict^T . R . U_predict
+# J = [ X_pred - X_ref]^T  .  Q_  .  [ X_pred - X_ref] + U_predict^T . R . U_predict
+# Q_ = S^T  .  Q  .  S 
+
 
 
 import rospy
@@ -62,16 +82,16 @@ from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 import QP_matrix as QPFn
 import math
+import follow_path as FP
 
 
-
-X_0 = np.array([ [0], [0.1], [0]])
+X_0 = np.array([ [0], [0.1], [-0.5]])
 dt = 0.05
 
 # reference state values [[ x],[ y],[ z]]
-ref_state_val = np.array([[0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75], 
-                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0], 
-                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
+ref_state_val = np.array([[0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00], 
+                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0], 
+                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
 
 # U_predict [ [v], [w]]
 pred_control_val = np.array([[ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -88,9 +108,42 @@ state_val_Q = np.diag(state_val_Q)
 refMarkerArray = MarkerArray()
 predictMarkerArray =MarkerArray()
 
-inti_state, ref_state_val = QPFn.Convert_To_Robot_Frame( X_0, ref_state_val)
 
 
+
+# generate following path to given step ------------------------
+def Line_follow( inti_state, ref_state_val, step) :
+    dt = 0.05
+    pred_control_val = np.tile( [[1],[0]], 10)
+    ref_state_val = ref_state_val
+    control_val_R = np.identity( len(pred_control_val[0])*2) *0.05
+    state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,15,0.15, 15,15,0.2, 20,20,0.2, 20,20,0.25, 25,25,0.25])
+    state_val_Q = np.diag(state_val_Q)
+
+    predicted_path = np.empty([0,3,11])
+    init_path = inti_state
+
+    for steps in range(step):
+
+        while (True):
+            control_val, state_value= QPFn.QPC_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+            if ( np.isnan(control_val[0][0])) :
+                print(control_val[0][0], type(control_val[0][0]))
+            else :
+                break
+
+        inti_state = state_value[:, 1:2]
+        ref_state_val = ref_state_val[:,1:]
+
+        init_path = np.hstack( (init_path, inti_state))
+        predicted_path = np.vstack( (predicted_path, state_value[np.newaxis, :, :]))
+
+        # print(state_value)
+    
+    return init_path, predicted_path
+
+
+# referance coord marker array ---------------------
 def referance_markers( ref_val):
     global refMarkerArray
 
@@ -117,8 +170,8 @@ def referance_markers( ref_val):
         marker.color.a = 1.0
 
         # Pose
-        marker.pose.position.x = ref_val[0][i] *10
-        marker.pose.position.y = ref_val[1][i] *10
+        marker.pose.position.x = ref_val[0][i] * 10
+        marker.pose.position.y = ref_val[1][i] * 10
         marker.pose.position.z = 0.4
 
         # matrix shift
@@ -136,7 +189,7 @@ def referance_markers( ref_val):
 
     return refMarkerArray
 
-
+# predicted coord marker array ----------------------
 def predicted_markers( ref_val):
     global predictMarkerArray
 
@@ -160,7 +213,7 @@ def predicted_markers( ref_val):
         marker.color.r = 0.0
         marker.color.g = 1.0
         marker.color.b = 0.0
-        marker.color.a = 1.0
+        marker.color.a = ( 1.0 - (i/len(ref_val[0])) )
 
         # Pose
         marker.pose.position.x = ref_val[0][i] *10
@@ -197,13 +250,11 @@ if __name__ == '__main__':
         
         refMarker_pub.publish( referance_markers(ref_state_val))
 
-        while (True):
-            control_val, state_value= QPFn.QP_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
-            if ( np.isnan(control_val[0][0])) :
-                print(control_val[0][0], type(control_val[0][0]))
-            else :
-                break
-        predictMarker_pub.publish( predicted_markers(state_value))
+        init_path, predicted_path = Line_follow( X_0, ref_state_val, 10)
+
+        for c in range(10):
+            predictMarker_pub.publish( predicted_markers( predicted_path[c]))
+            rospy.sleep(1)
 
         rate.sleep()
 
