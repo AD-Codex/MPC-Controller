@@ -371,10 +371,10 @@ def QPC_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R
     A = np.identity( len(pred_control_val[0])*2)
     A = np.array(A, dtype=c_double)
 
-    bupper = np.tile( [8,2], len(pred_control_val[0]))
+    bupper = np.tile( [3,1], len(pred_control_val[0]))
     bupper = np.array( bupper, dtype=c_double)
 
-    blower = np.tile( [-5,-2], len(pred_control_val[0]))
+    blower = np.tile( [-0.1,-1], len(pred_control_val[0]))
     blower= np.array( blower, dtype=c_double)
 
     sense = np.zeros(6)

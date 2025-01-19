@@ -122,7 +122,7 @@ def Line_follow( inti_state, ref_state_val, step) :
     pred_control_val = np.tile( [[1],[0]], 10)
     ref_state_val = ref_state_val
     control_val_R = np.identity( len(pred_control_val[0])*2) *0.05
-    state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,15,0.15, 15,15,0.2, 20,20,0.2, 20,20,0.25, 25,25,0.25])
+    state_val_Q = np.array([1,1,0.05, 5,5,0.1, 10,10,0.15, 15,15,0.2, 20,20,0.25, 25,25,0.3, 30,30,0.35, 35,35,0.4, 40,40,0.45, 45,45,0.5])
     state_val_Q = np.diag(state_val_Q)
 
     predicted_path = np.empty([0,3,11])

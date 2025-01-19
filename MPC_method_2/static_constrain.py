@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import follow_path as fp
 
 
-
+# *0.02 scale by coordinate Fn
 tolerance = 5
 c_limit = 500
 
@@ -61,11 +61,11 @@ def adaptive_parametric(x, y, tolerance):
 
 pathCoord, iWallCoord, oWallCoord = fp.map_data()
 
-plt.plot( iWallCoord[:c_limit,0], iWallCoord[:c_limit,1], label="inner_wall", color="blue")
-plt.plot( oWallCoord[:c_limit,0], oWallCoord[:c_limit,1], label="outter_wall", color="blue")
+plt.plot( iWallCoord[0, :c_limit], iWallCoord[1, :c_limit], label="inner_wall", color="blue")
+plt.plot( oWallCoord[0, :c_limit], oWallCoord[1, :c_limit], label="outter_wall", color="blue")
 
-iWall_segments = adaptive_parametric( iWallCoord[:c_limit,0], iWallCoord[:c_limit,1], tolerance)
-oWall_segments = adaptive_parametric( oWallCoord[:c_limit,0], oWallCoord[:c_limit,1], tolerance)
+iWall_segments = adaptive_parametric( iWallCoord[0, :c_limit], iWallCoord[1, :c_limit], tolerance *0.02)
+oWall_segments = adaptive_parametric( oWallCoord[0, :c_limit], oWallCoord[1, :c_limit], tolerance *0.02)
 
 for x1, x2, m, c in iWall_segments:
     plt.plot([x1, x2], [m*x1 + c, m*x2 + c], label=f"iWall_segments: {x1:.2f} to {x2:.2f}", color="red")

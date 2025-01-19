@@ -1,10 +1,14 @@
 
 # MPCC controller
-# contour controlling               -------- 1
+# contour controlling                 -------- 1
 
+# referance path get from follow_path.py
+# dispaly iWall and oWall
+
+# convert to robot frame
 # apply MPCC
 # generate path following simulation
-
+# convert to world frame
 
 
 # ---------------------- state equations ----------------------------------------
@@ -78,14 +82,17 @@
 import rospy
 import numpy as np
 from tf.transformations import *
+from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 import QP_matrix as QPFn
+import Frame_convert as Fc
 import math
 import follow_path as FP
+import time
 
 
-X_0 = np.array([ [0], [0.1], [-0.5]])
+X_0 = np.array([ [0], [1], [0]])
 dt = 0.05
 
 # reference state values [[ x],[ y],[ z]]
@@ -105,10 +112,11 @@ state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,1
 state_val_Q = np.diag(state_val_Q)
 
 
+wallMarker = Marker()
 refMarkerArray = MarkerArray()
 predictMarkerArray =MarkerArray()
 
-
+ref_state_val, iWallCoord, oWallCoord = FP.map_data()
 
 
 # generate following path to given step ------------------------
@@ -125,12 +133,18 @@ def Line_follow( inti_state, ref_state_val, step) :
 
     for steps in range(step):
 
+        inti_stat, ref_state_val = Fc.Convert_To_Robot_Frame( inti_state, ref_state_val)
+        
         while (True):
-            control_val, state_value= QPFn.QPC_solutions( inti_state, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+            control_val, state_value= QPFn.QPC_solutions( inti_stat, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
             if ( np.isnan(control_val[0][0])) :
                 print(control_val[0][0], type(control_val[0][0]))
             else :
                 break
+
+        inti_state, ref_state_val = Fc.Convert_To_World_Frame( inti_state, ref_state_val)
+        inti_state, state_value = Fc.Convert_To_World_Frame( inti_state, state_value)
+
 
         inti_state = state_value[:, 1:2]
         ref_state_val = ref_state_val[:,1:]
@@ -138,9 +152,9 @@ def Line_follow( inti_state, ref_state_val, step) :
         init_path = np.hstack( (init_path, inti_state))
         predicted_path = np.vstack( (predicted_path, state_value[np.newaxis, :, :]))
 
-        # print(state_value)
     
     return init_path, predicted_path
+
 
 
 # referance coord marker array ---------------------
@@ -188,6 +202,52 @@ def referance_markers( ref_val):
         refMarkerArray.markers.append(marker)
 
     return refMarkerArray
+
+
+# wall coord marker array -------------------------
+def wall_markers(iWall_coord, oWall_coord):
+    global wallMarker
+
+    wallMarker.header.frame_id = "base_link"
+    wallMarker.header.stamp = rospy.Time.now()
+    wallMarker.ns = "point of wall"
+
+    # Shape (mesh resource type - 10)
+    wallMarker.type = Marker.POINTS
+    wallMarker.id = 3001
+    wallMarker.action = Marker.ADD
+
+    # Scale
+    wallMarker.scale.x = 0.5
+    wallMarker.scale.y = 0.5
+
+    # Color
+    wallMarker.color.r = 0.0
+    wallMarker.color.g = 0.0
+    wallMarker.color.b = 1.0
+    wallMarker.color.a = 1.0
+
+    for i in range( len(iWall_coord[0])):
+        # Pose
+        point = Point()
+        point.x = iWall_coord[0][i] * 10
+        point.y = iWall_coord[1][i] * 10
+        point.z = 0
+
+        wallMarker.points.append(point)
+
+    for i in range( len(oWall_coord[0])):
+        # Pose
+        point = Point()
+        point.x = oWall_coord[0][i] * 10
+        point.y = oWall_coord[1][i] * 10
+        point.z = 0
+
+        wallMarker.points.append(point)
+
+
+    return wallMarker
+
 
 # predicted coord marker array ----------------------
 def predicted_markers( ref_val):
@@ -242,6 +302,7 @@ if __name__ == '__main__':
     rospy.loginfo("node start")
 
     refMarker_pub = rospy.Publisher("/object/refernce_point", MarkerArray, queue_size = 10)
+    WallCoord_pub = rospy.Publisher("/object/Wall_coord", Marker, queue_size = 10)
     predictMarker_pub = rospy.Publisher("/object/predict_point", MarkerArray, queue_size = 10)
 
     rate = rospy.Rate(10)
@@ -249,12 +310,13 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         
         refMarker_pub.publish( referance_markers(ref_state_val))
+        WallCoord_pub.publish( wall_markers(iWallCoord, oWallCoord))
 
-        init_path, predicted_path = Line_follow( X_0, ref_state_val, 10)
+        init_path, predicted_path = Line_follow( X_0, ref_state_val, 450)
 
-        for c in range(10):
+        for c in range(450):
             predictMarker_pub.publish( predicted_markers( predicted_path[c]))
-            rospy.sleep(1)
+            rospy.sleep(0.1)
 
         rate.sleep()
 

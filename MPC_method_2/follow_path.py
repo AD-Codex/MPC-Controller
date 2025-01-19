@@ -323,15 +323,18 @@ def map_data():
   final_path_y = np.concatenate( (p1_y[0], p2_y[0], p3_y[0], p4_y[0], p5_y[0], p6_y[0], p7_y[0], p8_y[0], p9_y[0]))
   teta = np.concatenate((teta_0_1,teta_1,teta_1_2,teta_2,teta_2_3,teta_3,teta_3_4,teta_4,teta_4_5))
 
-  pathCoord = np.column_stack((final_path_x, final_path_y, teta))
+  pathCoord = np.column_stack((final_path_x*0.02, final_path_y*0.02, teta))
+  pathCoord = pathCoord.T
 
   final_iWall_x = np.concatenate( (i_01x[0], i_02x, i_03x[0], i_04x, i_05x[0], i_06x, i_07x[0], i_08x, i_09x[0]))
   final_iWall_y = np.concatenate( (i_01y[0], i_02y, i_03y[0], i_04y, i_05y[0], i_06y, i_07y[0], i_08y, i_09y[0]))
-  iWallCoord = np.column_stack((final_iWall_x, final_iWall_y))
+  iWallCoord = np.column_stack((final_iWall_x, final_iWall_y)) 
+  iWallCoord = iWallCoord.T *0.02
 
   final_oWall_x = np.concatenate( (o_01x[0], o_02x, o_03x[0], o_04x, o_05x[0], o_06x, o_07x[0], o_08x, o_09x[0]))
   final_oWall_y = np.concatenate( (o_01y[0], o_02y, o_03y[0], o_04y, o_05y[0], o_06y, o_07y[0], o_08y, o_09y[0]))
   oWallCoord = np.column_stack((final_oWall_x, final_oWall_y))
+  oWallCoord = oWallCoord.T *0.02
 
 
   return pathCoord, iWallCoord, oWallCoord
