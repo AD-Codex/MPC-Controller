@@ -296,9 +296,6 @@ def path_coordinate() :
 
   return path
 
-# path_coordinate() 
-
-# print( path_coordinate())
 
 
 def mathplot() :
@@ -338,5 +335,3 @@ def map_data():
 
 
   return pathCoord, iWallCoord, oWallCoord
-
-map_data()

@@ -108,8 +108,8 @@ pred_control_val = np.array([[ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 # control_val_R = np.zeros( len(pred_control_val[0])*2)
 control_val_R = np.identity( len(pred_control_val[0])*2) *0.05
 
-state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,15,0.15, 15,15,0.2, 20,20,0.2, 20,20,0.25, 25,25,0.25, 25,25,0.3, 30,30,0.3, 30,30,0.35, 35,35,0.35, 40,40,0.4])
-state_val_Q = np.diag(state_val_Q)
+# state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,15,0.15, 15,15,0.2, 20,20,0.2, 20,20,0.25, 25,25,0.25, 25,25,0.3, 30,30,0.3, 30,30,0.35, 35,35,0.35, 40,40,0.4])
+# state_val_Q = np.diag(state_val_Q)
 
 
 wallMarker = Marker()
@@ -310,7 +310,7 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         
         refMarker_pub.publish( referance_markers(ref_state_val))
-        WallCoord_pub.publish( wall_markers(iWallCoord, oWallCoord))
+        # WallCoord_pub.publish( wall_markers(iWallCoord, oWallCoord))
 
         init_path, predicted_path = Line_follow( X_0, ref_state_val, 450)
 

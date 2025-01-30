@@ -127,11 +127,11 @@ def Line_follow( inti_state, ref_state_val, step) :
 
     for steps in range(step):
 
-        inti_stat, ref_state_val = Fc.Convert_To_Robot_Frame( inti_state, ref_state_val)
+        new_inti_stat, ref_state_val = Fc.Convert_To_Robot_Frame( inti_state, ref_state_val)
         print("counting setp ", steps, " --------------")
         
         while (True):
-            control_val, state_value= QPFn.QPC_solutions( inti_stat, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
+            control_val, state_value= QPFn.QPC_solutions( new_inti_stat, dt, pred_control_val, ref_state_val, control_val_R, state_val_Q)
             if ( np.isnan(control_val[0][0])) :
                 print(control_val[0][0], type(control_val[0][0]))
             else :
