@@ -1,11 +1,9 @@
 
-# MPC Controller
-# Static object avoiding, short range
+# MPC Controller with customizable object adding
+# multi Static object avoiding, long range
+# tested with 2 objects
+# correct method 
 
-# convert to robot frame
-# apply MPC
-
- 
 
 # ---------------------- state equations ----------------------------------------
 #
@@ -115,99 +113,107 @@ from tf.transformations import *
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
-import QP_constraintsMatrix as QPFn_c
+import QPC as QPC
 import Frame_convert as Fc
 import math
 import follow_path as FP
 import time
+import sys
 
 
 
-states = 5
-
-X_0 = np.array([[0], [0.0], [0.0]])
-
-staticObj = np.array([[0.5],[0.1]])
-statObjDistance = ( (staticObj[0][0] - X_0[0][0])**2 + (staticObj[1][0] - X_0[1][0])**2 )**(1/2)
-
-initCoord = np.vstack( (X_0, np.array([[statObjDistance],[ staticObj[1][0] - X_0[1][0]]])))
+np.set_printoptions(threshold=sys.maxsize)
 
 
-pred_control_val = np.tile( [[1],[0]], 15)
+# number of states
+states = 7
 
-dt = 0.025
+# starting point
+X_0 = np.array([[0], [0], [0]])
+initCoord = X_0
 
+# object coordinates
+staticObj = np.array([[  0.5,  0.8],
+                      [    0,  0.1],
+                      [    0,    0] ])
+
+# starting point to object distane
+for i in range( len(staticObj[0])):
+    staticObj[2][i] = ( (staticObj[0][i] - X_0[0][0])**2 + (staticObj[1][i] - X_0[1][0])**2 )**(1/2)
+    # initialize coordinate of system
+    initCoord = np.vstack( (initCoord, np.array([ [staticObj[2][i]], [ staticObj[1][i] - X_0[1][0]] ]) ))
+
+
+# predicted control states (number)
+pred_control_val = np.tile( [[1],[0]], 20)
+# cost Fn control state constant
 control_val_R = np.zeros( len(pred_control_val[0])*2)
 
+# step time seconds
+dt = 0.025
 
-ref_state_val = np.array([[0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75], 
-                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0], 
-                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
-
-
-state_val_Q = np.array([ [    1,    1,    2,    2,    3,    3,    4,    4,    5,    5,    6,    6,    7,    7,    8],
-                         [    1,    1,    2,    2,    3,    3,    4,    4,    5,    5,    6,    6,    7,    7,    8],
-                         [ 0.05, 0.05, 0.10, 0.10, 0.15, 0.15, 0.20, 0.20, 0.25, 0.25, 0.30, 0.30, 0.35, 0.35, 0.40],
-                         [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                         [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ])
+# reference values, (numer + 1)
+ref_state_val = np.array([[0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75,  0.8, 0.85,  0.9, 0.95,    1], 
+                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+                          [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ])
 
 
-x_distance = staticObj[0][0] - X_0[0][0]
-# steps = int( radius / 0.05)
+
+# cost fn state value constant (number)
+state_val_Q = np.array([ [    1,    1,    2,    2,    3,    3,    4,    4,    5,    5,    6,    6,    7,    7,    8,    8,    9,    9,   10,   10],
+                         [    1,    1,    2,    2,    3,    3,    4,    4,    5,    5,    6,    6,    7,    7,    8,    8,    9,    9,   10,   10],
+                         [ 0.05, 0.05, 0.10, 0.10, 0.15, 0.15, 0.20, 0.20, 0.25, 0.25, 0.30, 0.30, 0.35, 0.35, 0.40, 0.40, 0.45, 0.45, 0.50, 0.50] ])
+
+
+for i in range(states - 3):
+    ref_state_val = np.vstack(( ref_state_val, np.zeros(21)))
+    state_val_Q = np.vstack(( state_val_Q, np.zeros(20)))
+
+# update ref_state_val and state_val_Q -----------------------------
+space_val = [ 0.1, 0.1]
 steps = 2
-# if ly_ref positive (+0.1) path goes under, else ly_ref negative (-0.1) path goes above
-space_val = 0.1
+weight = 100
+for objs in range( len(staticObj[0])):
+    for i in range( len(ref_state_val[0])):
+        if ( (staticObj[0][objs] - X_0[0][0]) - ref_state_val[0][i] < 0.01 ):
+            for j in range(steps+1):
+                # if ly_ref positive (+0.1) path goes under, else ly_ref negative (-0.1) path goes above
+                ref_state_val[ 2*(objs+1) + 1 ][i - j] = space_val[objs]
+                ref_state_val[ 2*(objs+1) + 1 ][i + j] = space_val[objs]
+                ref_state_val[ 2*(objs+1) + 2 ][i - j] = space_val[objs] + j*0.02
+                ref_state_val[ 2*(objs+1) + 2 ][i + j] = space_val[objs] + j*0.02
 
-for i in range( len(ref_state_val[0])):
-    if ( x_distance - ref_state_val[0][i] < 0.01 ):
-        print(i)
-        for j in range(steps+1):
-            ref_state_val[3][i - j] = space_val
-            ref_state_val[3][i + j] = space_val
-            ref_state_val[4][i - j] = space_val + j*0.02
-            ref_state_val[4][i + j] = space_val + j*0.02
+                state_val_Q[0][i-j] = weight
+                state_val_Q[0][i-j] = weight
 
-            state_val_Q[0][i-j] = 100
-            state_val_Q[0][i-j] = 100
+                state_val_Q[ 2*(objs+1) + 1 ][i+j] = weight
+                state_val_Q[ 2*(objs+1) + 1 ][i-j] = weight
+                state_val_Q[ 2*(objs+1) + 2 ][i+j] = weight
+                state_val_Q[ 2*(objs+1) + 2 ][i-j] = weight
+            break
 
-            state_val_Q[3][i+j] = 100
-            state_val_Q[3][i-j] = 100
-            state_val_Q[4][i+j] = 100
-            state_val_Q[4][i-j] = 100
-        break
-
-
-print(ref_state_val)
 print(state_val_Q)
-
 state_val_Q = state_val_Q.flatten(order='F')
-# state_val_Q = np.array([1,1,0.05,0,0, 1,1,0.05,0,0, 2,2,0.1,0,0, 2,2,0.1,0,0, 3,3,0.15,0,0, 3,3,0.15,0,0, 4,4,0.2,0,0, 4,4,0.2,0,0, 5,5,0.25,0,0, 5,5,0.25,0,0, 6,6,0.3,0,0, 6,6,0.3,0,0, 7,7,0.35,0,0, 7,7,0.35,0,0, 8,8,0.4,0,0])
 state_val_Q = np.diag(state_val_Q)
+
+
 
 time.sleep(0.01)
 
 
 
-
-new_inti_stat, ref_state_val, staticObj = Fc.Convert_To_Robot_Frame2( X_0, ref_state_val, staticObj)
-
-statObjDistance = ( (staticObj[0][0])**2 + (staticObj[1][0])**2 )**(1/2)
-initCoord = np.vstack( (new_inti_stat, np.array([ [statObjDistance],[staticObj[1][0]] ]) ) )
-
 while (True):
-    control_val, state_value= QPFn_c.QP_solutions( states, initCoord, pred_control_val, ref_state_val, control_val_R, state_val_Q, dt)
+    control_val, state_value= QPC.QP_solutions( states, initCoord, pred_control_val, ref_state_val, control_val_R, state_val_Q, dt)
     if ( np.isnan(control_val[0][0])) :
         print(control_val[0][0], type(control_val[0][0]))
+        time.sleep(0.01)
     else :
         break
 
-# inti_state, ref_state_val = Fc.Convert_To_World_Frame( X_0, ref_state_val, staticObj)
 
-
-refMarkerArray = MarkerArray()
-predictMarkerArray =MarkerArray()
+refMarkerArray     = MarkerArray()
+predictMarkerArray = MarkerArray()
+staticObjArray     = MarkerArray()
 
 
 
@@ -305,36 +311,40 @@ def predicted_markers( ref_val):
     return predictMarkerArray
 
 
+# object marker array ------------------------------
+def staticObj_marker( staticObj):
+    global staticObjArray
 
-def staticObj_marker( coord):
+    for i in range( len(staticObj[0])):
+        marker = Marker()
+        marker.header.frame_id = "base_link"
+        marker.header.stamp = rospy.Time.now()
+        marker.ns = ""
 
-    marker = Marker()
-    marker.header.frame_id = "base_link"
-    marker.header.stamp = rospy.Time.now()
-    marker.ns = ""
+        # Shape (mesh resource type - 10)
+        marker.type = Marker.CYLINDER
+        marker.action = Marker.ADD
+        marker.id = 4000 + i
 
-    # Shape (mesh resource type - 10)
-    marker.type = Marker.CYLINDER
-    marker.id = 4000
-    marker.action = Marker.ADD
+        # Scale
+        marker.scale.x = 1.5
+        marker.scale.y = 1.5
+        marker.scale.z = 1
 
-    # Scale
-    marker.scale.x = 1.5
-    marker.scale.y = 1.5
-    marker.scale.z = 1
+        # Color
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+        marker.color.a = 0.5
 
-    # Color
-    marker.color.r = 1.0
-    marker.color.g = 0.0
-    marker.color.b = 0.0
-    marker.color.a = 0.5
+        # Pose
+        marker.pose.position.x = staticObj[0][i] *10
+        marker.pose.position.y = staticObj[1][i] *10
+        marker.pose.position.z = 0.5
 
-    # Pose
-    marker.pose.position.x = coord[0] *10
-    marker.pose.position.y = coord[1] *10
-    marker.pose.position.z = 0.5
+        staticObjArray.markers.append(marker)
 
-    return marker
+    return staticObjArray
 
 
 
@@ -344,17 +354,15 @@ if __name__ == '__main__':
 
     refMarker_pub = rospy.Publisher("/object/refernce_point", MarkerArray, queue_size = 10)
     predictMarker_pub = rospy.Publisher("/object/predict_point", MarkerArray, queue_size = 10)
-    staticObj_pub = rospy.Publisher("/object/static_obj", Marker, queue_size = 10)
+    staticObj_pub = rospy.Publisher("/object/static_obj", MarkerArray, queue_size = 10)
 
     rate = rospy.Rate(10)
 
     while not rospy.is_shutdown():
-
-        # control_val, state_value = QPFn_c.QP_solutions( states, X_0, pred_control_val, ref_state_val, control_val_R, state_val_Q, dt)
         
         refMarker_pub.publish( referance_markers(ref_state_val))
         predictMarker_pub.publish( predicted_markers(state_value))
-        staticObj_pub.publish( staticObj_marker( (staticObj[0][0], staticObj[1][0]) ))
+        staticObj_pub.publish( staticObj_marker( staticObj))
 
 
         rate.sleep()

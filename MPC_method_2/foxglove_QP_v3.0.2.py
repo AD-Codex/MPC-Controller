@@ -1,6 +1,6 @@
 
 # MPC Controller
-# Static object avoiding
+# Static object avoiding, short range
 # correct method 
 
 
@@ -124,7 +124,7 @@ states = 5
 
 X_0 = np.array([[0], [0.05], [0]])
 
-staticObj = np.array([[0.5],[0.05]])
+staticObj = np.array([[0.6],[0.1]])
 statObjDistance = ( (staticObj[0][0] - X_0[0][0])**2 + (staticObj[1][0] - X_0[1][0])**2 )**(1/2)
 
 initCoord = np.vstack( (X_0, np.array([[statObjDistance],[ staticObj[1][0] - X_0[1][0]]])))
@@ -159,11 +159,12 @@ for i in range( len(ref_state_val[0])):
     if ( x_distance - ref_state_val[0][i] < 0.01 ):
         print(i)
         for j in range(steps+1):
+            # if ly_ref positive (+0.1) path goes under, else ly_ref negative (-0.1) path goes above
             ref_state_val[3][i - j] = 0.1
             ref_state_val[3][i + j] = 0.1
-            # if ly_ref positive (+0.1) path goes under, else ly_ref negative (-0.1) path goes above
-            ref_state_val[4][i - j] = -0.1 + j*0.02
-            ref_state_val[4][i + j] = -0.1 + j*0.02
+            
+            ref_state_val[4][i - j] = 0.1 + j*0.02
+            ref_state_val[4][i + j] = 0.1 + j*0.02
 
             state_val_Q[0][i-j] = 100
             state_val_Q[0][i-j] = 100
