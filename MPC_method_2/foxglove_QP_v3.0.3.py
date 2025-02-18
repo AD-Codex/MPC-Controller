@@ -1,6 +1,7 @@
 
 # MPC Controller with customizable object adding
 # Static object avoiding new QPC library
+# short method with one object
 # correct method 
 
 
@@ -113,9 +114,7 @@ from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 import QPC as QPC
-import Frame_convert as Fc
 import math
-import follow_path as FP
 import time
 import sys
 

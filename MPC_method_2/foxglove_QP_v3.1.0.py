@@ -1,8 +1,9 @@
 
 # MPC Controller
-# Static object avoiding, short range
+# a Static object avoiding, short range
 
 # convert to robot frame
+# singal object avoiding
 # apply MPC
 
  
@@ -125,7 +126,7 @@ import time
 
 states = 5
 
-X_0 = np.array([[0], [0.0], [0.0]])
+X_0 = np.array([[0], [0.1], [0.0]])
 
 staticObj = np.array([[0.5],[0.1]])
 statObjDistance = ( (staticObj[0][0] - X_0[0][0])**2 + (staticObj[1][0] - X_0[1][0])**2 )**(1/2)
@@ -158,7 +159,7 @@ x_distance = staticObj[0][0] - X_0[0][0]
 # steps = int( radius / 0.05)
 steps = 2
 # if ly_ref positive (+0.1) path goes under, else ly_ref negative (-0.1) path goes above
-space_val = 0.1
+space_val = -0.1
 
 for i in range( len(ref_state_val[0])):
     if ( x_distance - ref_state_val[0][i] < 0.01 ):
@@ -183,7 +184,6 @@ print(ref_state_val)
 print(state_val_Q)
 
 state_val_Q = state_val_Q.flatten(order='F')
-# state_val_Q = np.array([1,1,0.05,0,0, 1,1,0.05,0,0, 2,2,0.1,0,0, 2,2,0.1,0,0, 3,3,0.15,0,0, 3,3,0.15,0,0, 4,4,0.2,0,0, 4,4,0.2,0,0, 5,5,0.25,0,0, 5,5,0.25,0,0, 6,6,0.3,0,0, 6,6,0.3,0,0, 7,7,0.35,0,0, 7,7,0.35,0,0, 8,8,0.4,0,0])
 state_val_Q = np.diag(state_val_Q)
 
 time.sleep(0.01)

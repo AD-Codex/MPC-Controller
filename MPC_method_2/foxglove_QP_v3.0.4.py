@@ -1,6 +1,6 @@
 
 # MPC Controller with customizable object adding
-# multi Static object avoiding, long range
+# multi Static object avoiding, long range, new QPC library
 # tested with 2 objects
 # correct method 
 
@@ -114,9 +114,7 @@ from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 import QPC as QPC
-import Frame_convert as Fc
 import math
-import follow_path as FP
 import time
 import sys
 

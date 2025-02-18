@@ -40,7 +40,7 @@ def Convert_To_Robot_Frame2( init_state, ref_state_val, obj_state):
         obj_state[0][i] = obj_state[0][i] - init_state[0][0]
         obj_state[1][i] = obj_state[1][i] - init_state[1][0]
 
-        obj_state[:,i] = rotation_matrix @ obj_state[:,i]
+        obj_state[0:2,i] = rotation_matrix @ obj_state[0:2,i]
 
     init_state = np.array([[0], [0], [0] ])
 

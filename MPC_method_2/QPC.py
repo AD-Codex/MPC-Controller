@@ -1,3 +1,6 @@
+# customizable mpc controller with object avoiding
+
+
 import daqp
 from ctypes import * 
 import ctypes.util
