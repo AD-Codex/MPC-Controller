@@ -1,0 +1,6 @@
+source;share/MPC_viewer/hook/pythonpath.ps1
+source;share/MPC_viewer/hook/pythonpath.dsv
+source;share/MPC_viewer/hook/pythonpath.sh
+source;share/MPC_viewer/hook/ament_prefix_path.ps1
+source;share/MPC_viewer/hook/ament_prefix_path.dsv
+source;share/MPC_viewer/hook/ament_prefix_path.sh

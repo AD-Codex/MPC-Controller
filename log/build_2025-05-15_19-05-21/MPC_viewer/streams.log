@@ -1,0 +1,64 @@
+[0.473s] Invoking command in '/home/victus/ROS/MPC_ws/src/MPC_viewer': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/victus/ROS/MPC_ws/build/MPC_viewer/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/MPC_viewer build --build-base /home/victus/ROS/MPC_ws/build/MPC_viewer/build install --record /home/victus/ROS/MPC_ws/build/MPC_viewer/install.log --single-version-externally-managed install_data
+[0.608s] running egg_info
+[0.609s] creating ../../build/MPC_viewer/MPC_viewer.egg-info
+[0.617s] writing ../../build/MPC_viewer/MPC_viewer.egg-info/PKG-INFO
+[0.617s] writing dependency_links to ../../build/MPC_viewer/MPC_viewer.egg-info/dependency_links.txt
+[0.617s] writing requirements to ../../build/MPC_viewer/MPC_viewer.egg-info/requires.txt
+[0.617s] writing top-level names to ../../build/MPC_viewer/MPC_viewer.egg-info/top_level.txt
+[0.617s] writing manifest file '../../build/MPC_viewer/MPC_viewer.egg-info/SOURCES.txt'
+[0.635s] reading manifest file '../../build/MPC_viewer/MPC_viewer.egg-info/SOURCES.txt'
+[0.635s] adding license file 'LICENSE'
+[0.635s] writing manifest file '../../build/MPC_viewer/MPC_viewer.egg-info/SOURCES.txt'
+[0.635s] running build
+[0.635s] running build_py
+[0.635s] creating /home/victus/ROS/MPC_ws/build/MPC_viewer/build
+[0.635s] creating /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib
+[0.636s] creating /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/foxglove_QP_v3.1.1.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/__init__.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/foxglove_QP_v1.0.0.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/Frame_convert.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/foxglove_QP_v1.0.1.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/QPC.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/foxglove_QP_v3.1.0.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/QP_constraintsMatrix.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/foxglove_QP_v1.1.1.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/QP_matrix.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] copying MPC_viewer/foxglove_QP_v4.0.0.py -> /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer
+[0.636s] running install
+[0.640s] running install_lib
+[0.649s] creating /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.649s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/foxglove_QP_v3.1.1.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.649s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/__init__.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.649s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/foxglove_QP_v1.0.0.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.649s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/Frame_convert.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.649s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/foxglove_QP_v1.0.1.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.649s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/QPC.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.650s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/foxglove_QP_v3.1.0.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.650s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/QP_constraintsMatrix.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.650s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/foxglove_QP_v1.1.1.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.650s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/QP_matrix.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.650s] copying /home/victus/ROS/MPC_ws/build/MPC_viewer/build/lib/MPC_viewer/foxglove_QP_v4.0.0.py -> /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer
+[0.650s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/foxglove_QP_v3.1.1.py to foxglove_QP_v3.1.1.cpython-312.pyc
+[0.651s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/__init__.py to __init__.cpython-312.pyc
+[0.651s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/foxglove_QP_v1.0.0.py to foxglove_QP_v1.0.0.cpython-312.pyc
+[0.652s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/Frame_convert.py to Frame_convert.cpython-312.pyc
+[0.653s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/foxglove_QP_v1.0.1.py to foxglove_QP_v1.0.1.cpython-312.pyc
+[0.653s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/QPC.py to QPC.cpython-312.pyc
+[0.655s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/foxglove_QP_v3.1.0.py to foxglove_QP_v3.1.0.cpython-312.pyc
+[0.656s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/QP_constraintsMatrix.py to QP_constraintsMatrix.cpython-312.pyc
+[0.658s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/foxglove_QP_v1.1.1.py to foxglove_QP_v1.1.1.cpython-312.pyc
+[0.658s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/QP_matrix.py to QP_matrix.cpython-312.pyc
+[0.660s] byte-compiling /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer/foxglove_QP_v4.0.0.py to foxglove_QP_v4.0.0.cpython-312.pyc
+[0.660s] Sorry: IndentationError: expected an indented block after function definition on line 233 (foxglove_QP_v4.0.0.py, line 237)
+[0.661s] running install_data
+[0.661s] creating /home/victus/ROS/MPC_ws/install/MPC_viewer/share/ament_index
+[0.661s] creating /home/victus/ROS/MPC_ws/install/MPC_viewer/share/ament_index/resource_index
+[0.661s] creating /home/victus/ROS/MPC_ws/install/MPC_viewer/share/ament_index/resource_index/packages
+[0.661s] copying resource/MPC_viewer -> /home/victus/ROS/MPC_ws/install/MPC_viewer/share/ament_index/resource_index/packages
+[0.661s] copying package.xml -> /home/victus/ROS/MPC_ws/install/MPC_viewer/share/MPC_viewer
+[0.661s] running install_egg_info
+[0.670s] Copying ../../build/MPC_viewer/MPC_viewer.egg-info to /home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages/MPC_viewer-0.0.0-py3.12.egg-info
+[0.671s] running install_scripts
+[0.737s] writing list of installed files to '/home/victus/ROS/MPC_ws/build/MPC_viewer/install.log'
+[0.754s] Invoked command in '/home/victus/ROS/MPC_ws/src/MPC_viewer' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/victus/ROS/MPC_ws/build/MPC_viewer/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/victus/ROS/MPC_ws/install/MPC_viewer/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/MPC_viewer build --build-base /home/victus/ROS/MPC_ws/build/MPC_viewer/build install --record /home/victus/ROS/MPC_ws/build/MPC_viewer/install.log --single-version-externally-managed install_data
