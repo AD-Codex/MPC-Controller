@@ -159,11 +159,11 @@ def Ak_Bk_Dk_constant( num_state, pred_horizon, init_state, pred_control_val, ob
 
         state_val_i = state_val_i_plus_1
 
-    print("Ak_Bk_constant ")
-    print( pred_state_val.round(decimals=3))
-    print(Ak)
-    print(Bk)
-    print(Dk)
+    # print("Ak_Bk_constant ")
+    # print( pred_state_val.round(decimals=3))
+    # print(Ak)
+    # print(Bk)
+    # print(Dk)
 
     return Ak, Bk, Dk, pred_state_val
 

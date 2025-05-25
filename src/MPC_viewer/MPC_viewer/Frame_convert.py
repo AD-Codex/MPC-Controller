@@ -19,7 +19,7 @@ def Convert_To_Robot_Frame( init_state, ref_state_val):
 
     init_state = np.array([[0], [0], [0] ])
 
-    print(ref_state_val)
+    # print(ref_state_val)
 
     return init_state, ref_state_val
 
