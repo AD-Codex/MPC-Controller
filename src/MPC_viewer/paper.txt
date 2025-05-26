@@ -1,0 +1,60 @@
+Augmented-State MPC for Obstacle-Aware Navigation of Autonomous Mobile Robots
+
+1. Abstract
+    Include: problem, approach (MPC + augmented state), key contributions, and results.
+    Problem: Real-time obstacle avoidance for autonomous mobile robots.
+    Approach: Several MPC variants tested using augmented state representation for dynamic obstacles.
+    Contribution: Comparative analysis of system modeling, performance, and limitations.
+    Result: Identify the most efficient approach in dynamic settings.
+
+
+2. Keywords
+    Model Predictive Control, Autonomous Mobile Robot, Obstacle Avoidance, Augmented State, Dynamic Obstacles, Trajectory Optimization.
+
+
+3. I. Introduction
+        Context: Importance of obstacle avoidance in autonomous mobile robots.
+        Motivation: Limitations of traditional obstacle handling in MPC.
+        Contribution:
+            Introduce the augmented state approach for dynamic obstacles.
+            Show improved predictive modeling and control.
+            Brief summary of simulation or experimental validation.
+        Brief overview of paper structure.
+
+
+4. II. Basic Robot System Modeling with path following
+        A. Define base robot dynamics and obstacle motion.
+        B. Provide the general linearized model and controller calculation
+        C. Define common cost function structure.
+        D. Results
+            compare with robot origin method and start point origin method
+    
+5. III. MPC Method 1 - MPC controller with contour Method
+        A. System Modeling
+        B. Control Calculation
+        C. Simulation Setup & Parameters
+        D. Results
+            compare with Basic MPC method without contouring
+
+6. IV. MPC Method 2 – MPC with Augmented-State for Static Obstacles
+        A. System Modeling
+        B. Control Calculation
+        C. Simulation Setup & Parameters
+        D. Results
+        E. Analysis
+
+7. V. MPC Method 3 –  MPC with Augmented-State for Dynamic Obstacles
+        A. System Modeling
+        B. Control Calculation
+        C. Simulation Setup & Parameters
+        D. Results
+        E. Analysis
+
+8. VI. Comparative Analysis
+
+9. VII. Conclusion and Future Work
+        Summarize findings:
+        Mention possible future improvements:
+            Hardware implementation
+
+10. References

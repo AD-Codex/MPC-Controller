@@ -212,12 +212,12 @@ class MPC_controller(Node):
         
 
         # robot states initializing ................................................................................................
-        init_state = np.array([[0], [0.1], [0]] , dtype=np.float64)
+        init_state = np.array([[0], [-0.05], [0]] , dtype=np.float64)
 
         # reference values, (numer + 1)
-        ref_state  = np.array([ [0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75,  0.8], 
-                                [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ] , dtype=np.float64)
+        ref_state  = np.array([ [0, 0.05,   0.1,  0.15,   0.2,  0.25,   0.3,  0.35,  0.4,   0.45,   0.5,  0.55,   0.6,  0.65,   0.7, 0.75,  0.8], 
+                                [0,    0,-0.005, -0.01,-0.017,-0.025,-0.035, -0.05,-0.065, -0.08,  -0.1, -0.12, -0.14, -0.16, -0.18, -0.2,  -0.22],
+                                [0,-0.05,  -0.1, -0.15,  -0.2, -0.25,  -0.3, -0.35, -0.35, -0.35, -0.35, -0.35, -0.35, -0.35, -0.35,-0.35, -0.35] ] , dtype=np.float64)
         
         # convert reference val to robot frame
         self.robot_init , self.ref_state_val = Fc.Convert_To_Robot_Frame( init_state, ref_state)
@@ -230,7 +230,11 @@ class MPC_controller(Node):
         
         
         # predicted control states (number)
-        self.pred_control_val   = np.tile( [[1],[0]], 16)
+        self.pred_control_val   = np.tile( [[2],[0]], 16)
+
+        self.pred_control_state = np.array([[0,0.025, 0.05,0.075,  0.1,0.125, 0.15,0.175,  0.2,0.225, 0.25,0.275,  0.3,0.325, 0.35,0.375,  0.4], 
+                                            [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+                                            [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ] , dtype=np.float64)
 
         # cost Fn control state constant
         self.control_val_R      = np.zeros( len(self.pred_control_val[0])*2 , dtype=np.float64)
@@ -245,8 +249,8 @@ class MPC_controller(Node):
         # objects in the environment ( robot frame) ...............................................................................
         self.num_obs       = 3
 
-        self.obs_states     = np.array( [ [ [  0.4], [ -0.1]],
-                                          [ [  0.7], [ -0.1]],
+        self.obs_states     = np.array( [ [ [  0.3], [ -0.05]],
+                                          [ [  0.6], [ -0.1]],
                                           [ [  0.5], [ -0.8]] ], dtype=np.float64)
         
         self.obs_start_vel  = np.array( [ [ [    0], [    0]],
@@ -316,11 +320,15 @@ class MPC_controller(Node):
         objs_path               = np.empty( (0, pred_horizon+1))
         objs_ref_path_val       = np.empty( (0, pred_horizon+1))
         objs_ref_path_Qval      = np.empty( (0, pred_horizon))
+        objs_avoid_dir          = np.array( [-1, -1, 1, 1])
+        objs_avoid_weight       = np.array( [100,100,0,0])
+        i=0
         for obs in self.obs_list.obstacles.values():
             collide_states  = self.collision_detect( self.out_state_val[ :, :pred_horizon+1], obs.predicted_positions[ :, :pred_horizon+1])
 
             if collide_states.any() :
-                obj_ref_path_val, obj_ref_path_Qval = self.objs_ref_path_Q(pred_horizon, self.out_state_val[ :, :pred_horizon+1], obs.predicted_positions[ :, :pred_horizon+1], collide_states, 1)
+                obj_ref_path_val, obj_ref_path_Qval = self.objs_ref_path_Q(pred_horizon, self.out_state_val[ :, :pred_horizon+1], obs.predicted_positions[ :, :pred_horizon+1], collide_states, objs_avoid_dir[i], objs_avoid_weight[i])
+                i = i + 1
                 print(obj_ref_path_val, obj_ref_path_Qval)
                 objs_init               = np.vstack( (objs_init, obs.position))
                 objs_pred_control_val   = np.vstack( (objs_pred_control_val, obs.predicted_velocities[ :, :pred_horizon]))
@@ -361,7 +369,7 @@ class MPC_controller(Node):
         return positions
 
     # update the object state reference matrix and Q matrix prevent collition
-    def objs_ref_path_Q(self, pred_horizon, follow_path, obj_path, collide_states, avoid_dir):
+    def objs_ref_path_Q(self, pred_horizon, follow_path, obj_path, collide_states, avoid_dir, avoid_weight):
         space = 0.1
         obj_ref_path_val   = np.zeros( (2, pred_horizon+1), dtype=np.float64)
         obj_ref_path_Qval  = np.zeros( (2, pred_horizon), dtype=np.float64)
@@ -372,8 +380,8 @@ class MPC_controller(Node):
 
             obj_ref_path_val[0][state]     = obj_path_state[0] - avoid_dir*space*math.sin(follow_path_state[2]) - follow_path_state[0]
             obj_ref_path_val[1][state]     = avoid_dir*space*math.cos(follow_path_state[2])
-            obj_ref_path_Qval[0][state-1]  = 100
-            obj_ref_path_Qval[1][state-1]  = 100
+            obj_ref_path_Qval[0][state-1]  = avoid_weight
+            obj_ref_path_Qval[1][state-1]  = avoid_weight
 
 
         return obj_ref_path_val, obj_ref_path_Qval
@@ -445,7 +453,7 @@ class MPC_controller(Node):
         for obj in range(objs):
             obj_vel_rel_robot = np.empty((2,0))
             for state in range( pred_horizon):
-                ref_state_  = ref_state [     0:         2, state:state+1]
+                ref_state_  = ref_state[     0:         2, state:state+1]
                 obj_state_  = objs_path[ obj*2: (obj+1)*2, state:state+1]
                 obj_vel_    = obj_vel   [ obj*2: (obj+1)*2, state:state+1]
 

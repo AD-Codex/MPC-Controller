@@ -231,6 +231,7 @@ class MPC_controller(Node):
         
         # predicted control states (number)
         self.pred_control_val   = np.tile( [[1],[0]], 16)
+        # self.pred_control_val   = np.tile( [[2],[0]], 16)
 
         # cost Fn control state constant
         self.control_val_R      = np.zeros( len(self.pred_control_val[0])*2 , dtype=np.float64)
@@ -291,11 +292,15 @@ class MPC_controller(Node):
         objs_path               = np.empty( (0, pred_horizon+1))
         objs_ref_path_val       = np.empty( (0, pred_horizon+1))
         objs_ref_path_Qval      = np.empty( (0, pred_horizon))
+        objs_avoid_dir          = np.array( [-1,-1, 1, 1])
+        objs_avoid_weight       = np.array( [100,100,100, 100])
+        i= 0
         for obs in self.obs_list.obstacles.values():
             collide_states  = self.collision_detect( self.out_state_val[ :, :pred_horizon+1], obs.predicted_positions[ :, :pred_horizon+1])
 
             if collide_states.any() :
-                obj_ref_path_val, obj_ref_path_Qval = self.objs_ref_path_Q(pred_horizon, self.out_state_val[ :, :pred_horizon+1], obs.predicted_positions[ :, :pred_horizon+1], collide_states, 1)
+                obj_ref_path_val, obj_ref_path_Qval = self.objs_ref_path_Q(pred_horizon, self.out_state_val[ :, :pred_horizon+1], obs.predicted_positions[ :, :pred_horizon+1], collide_states, objs_avoid_dir[i], objs_avoid_weight[i])
+                i = i + 1
                 print(obj_ref_path_val, obj_ref_path_Qval)
                 objs_init               = np.vstack( (objs_init, obs.position))
                 objs_pred_control_val   = np.vstack( (objs_pred_control_val, obs.predicted_velocities[ :, :pred_horizon]))
@@ -341,7 +346,7 @@ class MPC_controller(Node):
 
 
     # update the object state matrix and Q matrix prevent collition
-    def objs_ref_path_Q(self, pred_horizon, follow_path, obj_path, collide_states, avoid_dir):
+    def objs_ref_path_Q(self, pred_horizon, follow_path, obj_path, collide_states, avoid_dir, avoid_weight):
         space = 0.1
         obj_ref_path_val   = np.zeros( (2, pred_horizon+1), dtype=np.float64)
         obj_ref_path_Qval  = np.zeros( (2, pred_horizon), dtype=np.float64)
@@ -352,8 +357,8 @@ class MPC_controller(Node):
 
             obj_ref_path_val[0][state]     = obj_path_state[0] - avoid_dir*space*math.sin(follow_path_state[2]) - follow_path_state[0]
             obj_ref_path_val[1][state]     = avoid_dir*space*math.cos(follow_path_state[2])
-            obj_ref_path_Qval[0][state-1]  = 100
-            obj_ref_path_Qval[1][state-1]  = 100
+            obj_ref_path_Qval[0][state-1]  = avoid_weight
+            obj_ref_path_Qval[1][state-1]  = avoid_weight
 
 
         return obj_ref_path_val, obj_ref_path_Qval
