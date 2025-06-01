@@ -149,12 +149,13 @@ class MPC_controller(Node):
         
 
         # starting point
-        self.X_0 = np.array([[0], [-0.05], [0.1]])
+        self.X_0 = np.array([[0], [0], [0]])
 
         # object coordinates
-        self.staticObj = np.array([ [  0.4,  0.7],
-                                    [    0,    0.5],
+        self.staticObj = np.array([ [  0.4,  0.8],
+                                    [    0, 0.05],
                                     [    0,    0] ])
+        
 
         # starting point to object distane
         for i in range( len( self.staticObj[0])):
@@ -221,7 +222,7 @@ class MPC_controller(Node):
         collision_list = self.collision_test( ref_states, object_states)
         print( collision_list)
 
-        dir_list = [-1, -1]
+        dir_list = [-1, 1]
 
         for i in range( len(object_states[0])):
             if ( len(collision_list[i]) > 0):
@@ -239,7 +240,7 @@ class MPC_controller(Node):
                     states_update[0][ int(num[0])] = 0.1
                     states_update[1][ int(num[0])] = dir*(0.1 - num[1]/2)
 
-                    val_Q[1][ int(num[0])-1] = 100
+                    val_Q[1][ int(num[0])-1] = 500
                     val_Q_update[0][ int(num[0])-1] = 100
                     val_Q_update[1][ int(num[0])-1] = 100
 
@@ -287,16 +288,22 @@ class MPC_controller(Node):
     def reference_markers(self, ref_val):
         marker_array = MarkerArray()
         for i in range(len(ref_val[0])):
-            marker = self.make_marker(i, ref_val[0][i], ref_val[1][i], ref_val[2][i], [1.0, 0.0, 0.0], 0.4)
+            marker = self.make_marker(i, ref_val[0][i], ref_val[1][i], ref_val[2][i], [1.0, 0.0, 0.0], 0.1)
             marker_array.markers.append(marker)
+            # Create the text marker to display step number
+            text_marker = self.make_textmarker( (i+500), ref_val[0][i], ref_val[1][i], 0.1, [1.0, 1.0, 1.0], str(i + 1))
+            marker_array.markers.append(text_marker)
         return marker_array
 
 
     def predicted_markers(self, pre_val):
         marker_array = MarkerArray()
         for i in range(len(pre_val[0])):
-            marker = self.make_marker(1000 + i, pre_val[0][i], pre_val[1][i], pre_val[2][i], [0.0, 1.0, 0.0], 0.5)
+            marker = self.make_marker(1000 + i, pre_val[0][i], pre_val[1][i], pre_val[2][i], [0.0, 1.0, 0.0], 0.1)
             marker_array.markers.append(marker)
+            # Create the text marker to display step number
+            text_marker = self.make_textmarker( (i+1500), pre_val[0][i], pre_val[1][i], 0.1, [1.0, 1.0, 1.0], str(i + 1))
+            marker_array.markers.append(text_marker)
         return marker_array
 
 
@@ -311,7 +318,7 @@ class MPC_controller(Node):
 
     def make_marker(self, marker_id, x, y, theta, color_rgb, z_height):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "robot_base"
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = "mpc_path"
         marker.id = marker_id
@@ -344,7 +351,7 @@ class MPC_controller(Node):
 
     def make_objmarker(self, marker_id, x, y, color_rgb):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "robot_base"
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = "mpc_obj"
         marker.id = marker_id
@@ -353,18 +360,39 @@ class MPC_controller(Node):
 
         marker.scale.x = 1.5
         marker.scale.y = 1.5
-        marker.scale.z = 1.0
+        marker.scale.z = 0.1
 
         marker.color.r, marker.color.g, marker.color.b = color_rgb
         marker.color.a = 0.5
 
         marker.pose.position.x = float( x *10)
         marker.pose.position.y = float( y *10)
-        marker.pose.position.z = 0.5
+        marker.pose.position.z = 0.1
 
         return marker
 
 
+    def make_textmarker(self, marker_id, x, y, z, color_rgb, text):
+            marker = Marker()
+            marker.header.frame_id = "robot_base"
+            marker.header.stamp = self.get_clock().now().to_msg()
+            marker.ns = "obj_text"
+            marker.id = marker_id
+            marker.type = Marker.TEXT_VIEW_FACING
+            marker.action = Marker.ADD
+
+            marker.pose.position.x = float(x * 10)
+            marker.pose.position.y = float(y * 10)
+            marker.pose.position.z = z
+
+            marker.scale.z = 0.1
+
+            marker.color.r, marker.color.g, marker.color.b = color_rgb
+            marker.color.a = 1.0
+
+            marker.text = text
+
+            return marker
 
 
 

@@ -340,8 +340,8 @@ def QP_solutions(init_state, dt, pred_control_val, ref_state_val, control_val_R,
     A = np.ascontiguousarray(np.eye(n_cons), dtype=np.float64)
 
     # Upper and lower bounds for each control input: [v <= 3, w <= 1]
-    bupper = np.tile([3.0, 1.0], N)
-    blower = np.tile([-0.1, -1.0], N)
+    bupper = np.tile([3.0, 5.0], N)
+    blower = np.tile([-0.1, -5.0], N)
 
     bupper = np.ascontiguousarray(bupper, dtype=np.float64)
     blower = np.ascontiguousarray(blower, dtype=np.float64)

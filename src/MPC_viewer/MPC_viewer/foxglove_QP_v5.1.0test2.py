@@ -207,7 +207,7 @@ class MPC_controller(Node):
         # controller general settings .............................................................................................
         self.pred_horizon = 15
         # step time seconds
-        self.dt = 0.025 
+        self.dt = 0.025
         # ------------------------------------------------------------------------------------------------------------------------
         
 
@@ -216,15 +216,17 @@ class MPC_controller(Node):
 
         # reference values, (numer + 1)
         ref_state  = np.array([ [0, 0.05,   0.1,  0.15,   0.2,  0.25,   0.3,  0.35,  0.4,   0.45,   0.5,  0.55,   0.6,  0.65,   0.7, 0.75,  0.8], 
-                                [0,    0,-0.005, -0.01,-0.017,-0.025,-0.035, -0.05,-0.065, -0.08,  -0.1, -0.12, -0.14, -0.16, -0.18, -0.2,  -0.22],
-                                [0,-0.05,  -0.1, -0.15,  -0.2, -0.25,  -0.3, -0.35, -0.35, -0.35, -0.35, -0.35, -0.35, -0.35, -0.35,-0.35, -0.35] ] , dtype=np.float64)
+                                [0,    0,-0.005, -0.01,-0.017,-0.025,-0.035, -0.05,-0.065, -0.09, -0.12, -0.16,  -0.2, -0.25, -0.31,-0.38, -0.45],
+                                [0,-0.05,  -0.1, -0.15,  -0.2, -0.25,  -0.3, -0.35, -0.4,   -0.5,  -0.6,  -0.7,  -0.8,  -0.9,  -1.0, -1.1,  -1.2] ] , dtype=np.float64)
         
         # convert reference val to robot frame
         self.robot_init , self.ref_state_val = Fc.Convert_To_Robot_Frame( init_state, ref_state)
 
+        print(self.ref_state_val)
+
         
         # cost fn state value constant (number)
-        self.state_val_Q    = np.array( [ [  0.5,  0.5,    1,    1,  1.5,  1.5,    2,    2,  2.5,  2.5,    3,    3,  3.5,  3.5,    4,    4],
+        self.state_val_Q    = np.array( [ [    1,    1,    2,    2,    3,    3,    4,    4,    5,    5,    6,    6,    7,    7,    8,    8],
                                           [    1,    1,    2,    2,    3,    3,    4,    4,    5,    5,    6,    6,    7,    7,    8,    8],
                                           [ 0.05, 0.05, 0.10, 0.10, 0.15, 0.15, 0.20, 0.20, 0.25, 0.25, 0.30, 0.30, 0.35, 0.35, 0.40, 0.40]] , dtype=np.float64)
         
@@ -232,9 +234,6 @@ class MPC_controller(Node):
         # predicted control states (number)
         self.pred_control_val   = np.tile( [[2],[0]], 16)
 
-        self.pred_control_state = np.array([[0,0.025, 0.05,0.075,  0.1,0.125, 0.15,0.175,  0.2,0.225, 0.25,0.275,  0.3,0.325, 0.35,0.375,  0.4], 
-                                            [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                            [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ] , dtype=np.float64)
 
         # cost Fn control state constant
         self.control_val_R      = np.zeros( len(self.pred_control_val[0])*2 , dtype=np.float64)
@@ -249,8 +248,8 @@ class MPC_controller(Node):
         # objects in the environment ( robot frame) ...............................................................................
         self.num_obs       = 3
 
-        self.obs_states     = np.array( [ [ [  0.35], [ -0.05]],
-                                          [ [  0.8], [ -0.2]],
+        self.obs_states     = np.array( [ [ [  0.4], [-0.05]],
+                                          [ [  1.7], [ -0.3]],
                                           [ [  1.5], [ -0.8]] ], dtype=np.float64)
         
         self.obs_start_vel  = np.array( [ [ [    0], [    0]],
@@ -268,32 +267,32 @@ class MPC_controller(Node):
 
 
 
-        # object states initializing (robot frame) ................................................................
-        # object init state
-        self.Obj_state  = np.array([ [  0.8],
-                                     [ -0.1],
-                                     [  0.8],
-                                     [  0.3] ] , dtype=np.float64)
-        # objs velocity X_dot Y _dot
-        self.obj_vel    = np.array([ [ -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2],
-                                     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
-                                     [ -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3],
-                                     [  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1]] , dtype=np.float64)
+        # # object states initializing (robot frame) ................................................................
+        # # object init state
+        # self.Obj_state  = np.array([ [  0.8],
+        #                              [ -0.1],
+        #                              [  0.8],
+        #                              [  0.3] ] , dtype=np.float64)
+        # # objs velocity X_dot Y _dot
+        # self.obj_vel    = np.array([ [ -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2],
+        #                              [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+        #                              [ -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3],
+        #                              [  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1]] , dtype=np.float64)
         
-        self.obj_ref    = np.array([ [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                     [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                     [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                     [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ], dtype=np.float64)
+        # self.obj_ref    = np.array([ [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                              [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                              [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                              [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ], dtype=np.float64)
         
-        self.obj_path   = np.array([ [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                     [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                     [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                     [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ], dtype=np.float64)
+        # self.obj_path   = np.array([ [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                              [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                              [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                              [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ], dtype=np.float64)
         
-        self.obj_valQ   = np.array([   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                       [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                       [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
-                                       [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ], dtype=np.float64)
+        # self.obj_valQ   = np.array([   [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                                [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                                [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0],
+        #                                [    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0] ], dtype=np.float64)
 
 
     def timer_callback(self):
@@ -320,8 +319,8 @@ class MPC_controller(Node):
         objs_path               = np.empty( (0, pred_horizon+1))
         objs_ref_path_val       = np.empty( (0, pred_horizon+1))
         objs_ref_path_Qval      = np.empty( (0, pred_horizon))
-        objs_avoid_dir          = np.array( [-1, 1, 1, 1])
-        objs_avoid_weight       = np.array( [100,50,0,0])
+        objs_avoid_dir          = np.array( [ -1, 1, 1, 1])
+        objs_avoid_weight       = np.array( [100,0,0,0])
         i=0
         for obs in self.obs_list.obstacles.values():
             collide_states  = self.collision_detect( self.out_state_val[ :, :pred_horizon+1], obs.predicted_positions[ :, :pred_horizon+1])
@@ -378,10 +377,14 @@ class MPC_controller(Node):
             follow_path_state   = follow_path[ :, state]
             obj_path_state     = obj_path[ :, state]
 
-            obj_ref_path_val[0][state]     = obj_path_state[0] - avoid_dir*space*math.sin(follow_path_state[2]) - follow_path_state[0]
+            if ( obj_path_state[0] - follow_path_state[0] < 0):
+                obj_ref_path_val[0][state]     = space*math.sin(follow_path_state[2])
+            else:
+                obj_ref_path_val[0][state]     = -space*math.sin(follow_path_state[2])
             obj_ref_path_val[1][state]     = avoid_dir*space*math.cos(follow_path_state[2])
             obj_ref_path_Qval[0][state-1]  = avoid_weight
             obj_ref_path_Qval[1][state-1]  = avoid_weight
+            print( "state:", state, " ref 1:", obj_ref_path_val[0][state] , " ref 2:", obj_ref_path_val[1][state])
 
 
         return obj_ref_path_val, obj_ref_path_Qval
@@ -488,10 +491,10 @@ class MPC_controller(Node):
     def predicted_markers(self, pre_val):
         marker_array = MarkerArray()
         for i in range(len(pre_val[0])):
-            marker = self.make_marker(1300 + i, pre_val[0][i], pre_val[1][i], pre_val[2][i], [1.0, 0.6, 0.0], 0.5)
+            marker = self.make_marker(1100 + i, pre_val[0][i], pre_val[1][i], pre_val[2][i], [1.0, 1.0, 0.0], 0.5)
             marker_array.markers.append(marker)
             # Create the text marker to display step number
-            text_marker = self.make_textmarker( (i+1800), pre_val[0][i], pre_val[1][i], 0.5, [1.0, 0.6, 0.0], str(i + 1))
+            text_marker = self.make_textmarker( (i+1500), pre_val[0][i], pre_val[1][i], 0.5, [1.0, 1.0, 1.0], str(i + 1))
             marker_array.markers.append(text_marker)
         return marker_array
 
@@ -510,7 +513,7 @@ class MPC_controller(Node):
 
     def make_marker(self, marker_id, x, y, theta, color_rgb, z_height):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "robot_base"
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = "mpc_path"
         marker.id = marker_id
@@ -542,7 +545,7 @@ class MPC_controller(Node):
     
     def make_objmarker(self, marker_id, x, y, color_rgb, a):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "robot_base"
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = "mpc_obj"
         marker.id = marker_id
@@ -564,7 +567,7 @@ class MPC_controller(Node):
     
     def make_textmarker(self, marker_id, x, y, z, color_rgb, text):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "robot_base"
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = "obj_text"
         marker.id = marker_id

@@ -86,27 +86,33 @@ class MPC_controller(Node):
     def init_state(self):
         self.get_logger().info("Initializing state variables")
 
-        self.X_0 = np.array([ [0], [0.05], [-0.1]])
-        self.dt = 0.05
+        self.X_0 = np.array([ [0], [-0.2], [0]])
+        self.dt = 0.025
 
         # reference state values [[ x],[ y],[ z]]
-        self.ref_state_val = np.array([[0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75], 
-                                [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0], 
-                                [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
+        self.ref_state_val = np.array([ [0, 0.05,  0.1, 0.15,  0.2, 0.25,  0.3, 0.35,  0.4, 0.45,  0.5, 0.55,  0.6, 0.65,  0.7, 0.75], 
+                                        [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0], 
+                                        [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
 
         # U_predict [ [v], [w]]
-        self.pred_control_val = np.array([[ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+        self.pred_control_val = np.array([  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
 
 
-        # self.control_val_R = np.zeros( len( self.pred_control_val[0])*2)
-        self.control_val_R = np.identity( len( self.pred_control_val[0])*2) *0.05
+        self.control_val_R = np.zeros( len( self.pred_control_val[0])*2)
+        # self.control_val_R = np.identity( len( self.pred_control_val[0])*2) *0.05
 
+        # self.state_val_Q = np.array([10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1, 10,10,1])
+        # self.state_val_Q = np.array([8,8,0.4, 7,7,0.35, 7,7,0.35, 6,6,0.3, 6,6,0.3, 5,5,0.25, 5,5,0.25, 4,4,0.2, 4,4,0.2, 3,3,0.15, 3,3,0.15, 2,2,0.1, 2,2,0.1, 1,1,0.05, 1,1,0.05])
+        # self.state_val_Q = np.array([1,1,0.05, 2,2,0.1, 3,3,0.15, 4,4,0.2, 5,5,0.25, 6,6,0.3, 7,7,0.35, 8,8,0.4, 9,9,0.45, 10,10,0.5, 11,1,0.55, 12,12,0.6, 13,13,0.65, 14,14,0.7, 15,15,0.75])
         self.state_val_Q = np.array([1,1,0.05, 5,5,0.05, 5,5,0.1, 10,10,0.1, 10,10,0.15, 15,15,0.15, 15,15,0.2, 20,20,0.2, 20,20,0.25, 25,25,0.25, 25,25,0.3, 30,30,0.3, 30,30,0.35, 35,35,0.35, 40,40,0.4])
+        
         self.state_val_Q = np.diag( self.state_val_Q)
 
         # Convert to robot frame
         self.inti_state, self.ref_state_val = Fc.Convert_To_Robot_Frame( self.X_0, self.ref_state_val)
+
+        print( self.ref_state_val )
 
 
     def mpc_solver(self):
@@ -135,7 +141,7 @@ class MPC_controller(Node):
     def reference_markers(self, ref_val):
         marker_array = MarkerArray()
         for i in range(len(ref_val[0])):
-            marker = self.make_marker(i, ref_val[0][i], ref_val[1][i], ref_val[2][i], [1.0, 0.0, 0.0], 0.4)
+            marker = self.make_marker(i, ref_val[0][i], ref_val[1][i], ref_val[2][i], [1.0, 0.0, 0.0], 0.0)
             marker_array.markers.append(marker)
         return marker_array
     
@@ -143,14 +149,14 @@ class MPC_controller(Node):
     def predicted_markers(self, pre_val):
         marker_array = MarkerArray()
         for i in range(len(pre_val[0])):
-            marker = self.make_marker(1000 + i, pre_val[0][i], pre_val[1][i], pre_val[2][i], [0.0, 1.0, 0.0], 0.5)
+            marker = self.make_marker(1000 + i, pre_val[0][i], pre_val[1][i], pre_val[2][i], [0.0, 1.0, 0.0], 0.0)
             marker_array.markers.append(marker)
         return marker_array
     
 
     def make_marker(self, marker_id, x, y, theta, color_rgb, z_height):
         marker = Marker()
-        marker.header.frame_id = "base_link"
+        marker.header.frame_id = "(robot_base)"
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = "mpc_path"
         marker.id = marker_id

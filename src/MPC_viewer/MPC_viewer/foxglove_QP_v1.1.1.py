@@ -107,7 +107,7 @@ class MPC_controller(Node):
     def init_state(self):
         self.get_logger().info("Initializing state variables")
 
-        self.X_0 = np.array([ [0.0], [0.1], [-0.2]])
+        self.X_0 = np.array([ [0.0], [-0.2], [0.1]])
         self.dt = 0.05
 
         # reference state values [[ x],[ y],[ z]]
@@ -116,7 +116,7 @@ class MPC_controller(Node):
                                         [0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0]])
 
         # U_predict [ [v], [w]]
-        self.pred_control_val = np.array([  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        self.pred_control_val = np.array([  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
                                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
 
 
